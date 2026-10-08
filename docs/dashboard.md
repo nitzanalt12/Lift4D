@@ -56,9 +56,9 @@ views and are deliberately excluded. Reconstruction's `comparison.mp4` contains
 compressed RGB panels, no alpha, no per-video frame map, and can be padded by the
 encoder. It is not used for alignment evaluation. The current viewer uses saved
 frame images to make a synchronized player, rather than guessing MP4 frame maps.
-No baseline exporter or training code was changed. For real alignment metrics,
-saved RGB/alpha plus trustworthy input-camera/frame metadata are still required;
-this dashboard cannot produce them from a Gaussian checkpoint.
+Original training code is unchanged. A separate [evaluation exporter](evaluation-export.md)
+now produces saved RGB/alpha and explicit input-camera/frame metadata from final
+checkpoints. The dashboard itself never performs checkpoint rendering.
 
 ## Minimal export adapter (also suitable for future experiments 2 and 3)
 
@@ -106,7 +106,9 @@ camera values.** A producer must supply the actual input camera intrinsics,
 world-to-camera transform and time mapping from its render operation. The viewer
 checks equal explicit IDs, finite matching nonnegative times, increasing unique
 input timestamps, identical camera dictionaries, valid pinhole parameters and
-image dimensions. A manifest is a producer declaration; equality checks cannot
+image dimensions. The baseline exporter alternatively declares verified input-frame
+identity and the normalized deformation coordinate when physical timestamps are
+unavailable; no physical fps is invented (see the exporter documentation). A manifest is a producer declaration; equality checks cannot
 independently prove a producer used the declared camera. Do not hand-invent camera
 parameters or timestamps to make a render eligible. Undistorted pinhole cameras
 only in v1; nonmatching or missing declarations are not evaluated.
@@ -184,7 +186,7 @@ Optional Chromium smoke test (server running with the demo and original run root
 PLAYWRIGHT_MODULE=/path/to/playwright CHROMIUM_EXECUTABLE=/path/to/chromium node dashboard/tests/browser.cjs
 ```
 
-The browser check covers a real partial rhino run, a synthetic run, intentionally
+The browser check covers a verified final rhino run with automatic metric coverage, a synthetic run, intentionally
 out-of-order image responses, synchronized decoded pixels, play/pause, refresh,
 overlay and worst-frame navigation. Python checks cover identity/empty masks,
 known boundary displacement, target-only PSNR, alpha thresholds, missing alpha,
