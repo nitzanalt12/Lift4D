@@ -120,6 +120,15 @@ def frame_index(run, sequence, view=None):
             ti, tr = row.get('input_time_seconds'), row.get('render_time_seconds')
             ci, cr = row.get('input_camera'), row.get('render_camera')
             valid_time = isinstance(ti, (int, float)) and not isinstance(ti, bool) and np.isfinite(ti) and ti >= 0 and ti == tr
+            if manifest.get('time_mapping', {}).get('kind') == 'input_frame_identity':
+                # DAVIS frame directories carry identity, not trustworthy physical
+                # timestamps. Validate exact frame/deformation coordinates instead.
+                ii, ri = row.get('input_frame_index'), row.get('render_frame_index')
+                dt = row.get('deformation_time')
+                valid_time = (native_ok and type(ii) is int and type(ri) is int
+                              and ii == ri == pos and isinstance(dt, (int, float))
+                              and dt == pos / max(1, len(ids)-1))
+                rec['time'] = None
             rec['alignment'] = bool(valid_time and valid_camera(ci) and ci == cr and row.get('render_id') == fid)
             rec['reason'] = '' if rec['alignment'] else 'Frame ID, timestamps or explicit camera parameters do not match'
             rec['proof'] = row

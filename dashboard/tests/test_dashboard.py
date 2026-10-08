@@ -81,6 +81,18 @@ class Artifacts(unittest.TestCase):
         self.mutate(wrong_size)
         with self.assertRaises(ValueError):arrays(self.index()[0])
 
+    def test_frame_identity_without_inventing_timestamps(self):
+        def identity(m):
+            m['time_mapping']={'kind':'input_frame_identity','physical_fps':None}
+            for i,row in enumerate(m['frames']):
+                row.pop('input_time_seconds');row.pop('render_time_seconds')
+                row.update(input_frame_index=i,render_frame_index=i,deformation_time=i/11)
+        self.mutate(identity)
+        rows=self.index()
+        self.assertTrue(all(r['alignment'] for r in rows));self.assertTrue(all(r['time'] is None for r in rows))
+        self.mutate(lambda m:m['frames'][3].update(render_frame_index=4))
+        self.assertFalse(self.index()[3]['alignment'])
+
     def test_resolutions_and_cache_source_changes(self):
         from PIL import Image
         import os,time
