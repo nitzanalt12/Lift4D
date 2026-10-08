@@ -2,9 +2,9 @@
 from . import artifacts as a
 
 ANIMALS={'rhino':'קרנף · Rhino','camel':'גמל · Camel','flamingo':'פלמינגו · Flamingo','cows':'פרה · Cows'}
-EXPERIMENTS={'baseline':'1 · LIFT4D baseline','2.1':'2.1 · Frozen mesh · final deformation','2.2':'2.2 · Frozen mesh · geometry deformation','2.3':'2.3 · Mesh fine-tuning','2.4':'2.4 · Mesh ARAP projection','2.5':'2.5 · Surface-aware frozen mesh','demo':'DEMO · Synthetic data'}
+EXPERIMENTS={'baseline':'1 · LIFT4D baseline','2.1':'2.1 · Frozen mesh · final deformation','2.2':'2.2 · Frozen mesh · geometry deformation','2.3':'2.3 · Mesh fine-tuning','2.4':'2.4 · Mesh ARAP projection','2.5':'2.5 · Surface-aware frozen mesh','2.6':'2.6 · Video anchors + ARAP pilot','demo':'DEMO · Synthetic data'}
 STAGES={'node':'geometry','node_delta':'appearance','geometry':'geometry','appearance':'appearance','mesh_finetune':'mesh_finetune'}
-STAGE_LABELS={'geometry':'Geometry','appearance':'Appearance','mesh_finetune':'Fine-tuning','arap':'ARAP · source','surface_transfer':'Surface weights · source'}
+STAGE_LABELS={'geometry':'Geometry','appearance':'Appearance','mesh_finetune':'Fine-tuning','arap':'ARAP · source','surface_transfer':'Surface weights · source','video_anchors':'Video anchors · source'}
 
 
 def build(root, include_auxiliary=False):
@@ -43,7 +43,7 @@ def build(root, include_auxiliary=False):
                         if time.time()-checkpoint_file.stat().st_mtime<2:continue
                         groups.setdefault(('mesh_finetune',step),[{'id':'','kind':'missing','label':'Saved checkpoint; renders unavailable'}])
                 if not groups:
-                    source_stage={'2.4':'arap','2.5':'surface_transfer'}.get(experiment)
+                    source_stage={'2.4':'arap','2.5':'surface_transfer','2.6':'video_anchors'}.get(experiment)
                     pending=(source_stage,int(config['source_checkpoint'])) if source_stage and config.get('source_checkpoint') else ('pending',None)
                     groups[pending]=[{'id':'','kind':'missing','label':'No settled saved render yet'}]
                 for (stage,iteration),candidates in groups.items():
