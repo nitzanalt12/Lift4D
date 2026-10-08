@@ -42,7 +42,9 @@ def build(root, include_auxiliary=False):
                         except (ValueError,IndexError):continue
                         if time.time()-checkpoint_file.stat().st_mtime<2:continue
                         groups.setdefault(('mesh_finetune',step),[{'id':'','kind':'missing','label':'Saved checkpoint; renders unavailable'}])
-                if not groups:groups[('pending',None)]=[{'id':'','kind':'missing','label':'No saved render yet'}]
+                if not groups:
+                    pending=('arap',int(config['source_checkpoint'])) if experiment=='2.4' and config.get('source_checkpoint') else ('pending',None)
+                    groups[pending]=[{'id':'','kind':'missing','label':'No settled saved render yet'}]
                 for (stage,iteration),candidates in groups.items():
                     def preference(view):
                         complete=False

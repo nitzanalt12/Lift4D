@@ -47,6 +47,16 @@ class CatalogTests(unittest.TestCase):
         links=list((self.root/'results').glob('camel/2.1/appearance-30000/*/run'))
         self.assertEqual(len(links),1);self.assertTrue(links[0].is_symlink());self.assertEqual(links[0].resolve(),run.resolve())
         self.assertEqual(len(build(self.root)['entries']),1)
+    def test_arap_partial_run_keeps_source_checkpoint_identity(self):
+        run=self.make_run('arap-active','2.4')
+        self.write(run/'config.json',{'experiment':'2.4','source_checkpoint':30000})
+        self.write(run/'metadata.json',{'experiment':'2.4','selected_objects':['camel'],'display_label':'ARAP λ=10'})
+        (run/'logs').mkdir();(run/'logs/projection.jsonl').write_text('in progress')
+        entry=build(self.root)['entries'][0]
+        self.assertEqual(entry['checkpoint'],'arap:30000')
+        self.assertEqual(entry['execution_label'],'ARAP λ=10')
+        self.assertEqual(entry['kind'],'missing')
+
     def test_finetune_checkpoint_without_render_is_selectable(self):
         run=self.make_run('trained','2.3');self.manifest(run,'mesh_finetune',1000)
         checkpoint=run/'checkpoints/delta-000250.pt';checkpoint.parent.mkdir();checkpoint.write_bytes(b'atomic fixture')
