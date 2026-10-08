@@ -1,4 +1,4 @@
-"""Local HTTP UI. Reads saved artifacts only; writes exclusively to its cache."""
+"""Saved-result UI; evaluation cache and explicitly saved manual label versions."""
 import argparse
 import io
 import importlib.metadata
@@ -14,6 +14,7 @@ from .catalog import build as result_catalog
 from .comparison import pair as compare_views
 from .metrics import boundary, cached_evaluate, local_lpips
 from . import attachment_audit
+from . import video_annotations
 
 STATIC = Path(__file__).parent/'static'
 EVAL_LOCK = threading.Lock()
@@ -34,8 +35,9 @@ class Handler(BaseHTTPRequestHandler):
         try:
             url = urlparse(self.path)
             q = {k:v[0] for k,v in parse_qs(url.query).items()}
-            if url.path in ['/', '/app.js', '/comparison.js', '/style.css','/attachment-audit','/attachment-audit.js']:
-                name = 'index.html' if url.path=='/' else 'attachment-audit.html' if url.path=='/attachment-audit' else url.path[1:]
+            if url.path in ['/', '/app.js', '/comparison.js', '/style.css','/attachment-audit','/attachment-audit.js','/video-anchors','/video-anchors.js']:
+                pages={'/':'index.html','/attachment-audit':'attachment-audit.html','/video-anchors':'video-anchors.html'}
+                name = pages.get(url.path,url.path[1:])
                 mime = 'text/html; charset=utf-8' if name.endswith('.html') else 'text/css' if name.endswith('.css') else 'text/javascript'
                 return self.respond((STATIC/name).read_bytes(),mime)
             if url.path=='/plotly.js':
@@ -44,6 +46,12 @@ class Handler(BaseHTTPRequestHandler):
             if url.path=='/api/attachment-audits':return self.respond({'audits':attachment_audit.exports(self.server.root)})
             if url.path=='/api/attachment-audit':return self.respond(attachment_audit.read(self.server.root,q['audit'])[1])
             if url.path=='/api/attachment-asset':return self.respond(attachment_audit.asset(self.server.root,q['audit'],q['file']),'application/octet-stream')
+            if url.path=='/api/video-anchor-definitions':return self.respond({'definitions':video_annotations.listing(self.server.root)})
+            if url.path=='/api/video-anchor-definition':return self.respond(video_annotations.definition(self.server.root,q['definition'])[1])
+            if url.path=='/api/video-anchor-initial':return self.respond(video_annotations.initial(self.server.root,q['definition']))
+            if url.path=='/api/video-anchor-image':
+                data,mime=video_annotations.image(self.server.root,q['definition'],q['frame'],q.get('proposal')=='1')
+                return self.respond(data,mime)
             if url.path=='/api/catalog':
                 return self.respond(result_catalog(self.server.root,q.get('auxiliary')=='1'))
             if url.path=='/api/runs':
@@ -98,6 +106,11 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         try:
+            if self.path=='/api/video-annotations':
+                size=int(self.headers.get('Content-Length','0'))
+                if not 0<size<=1048576:raise ValueError('Invalid annotation request size')
+                q=json.loads(self.rfile.read(size))
+                return self.respond(video_annotations.save(self.server.root,q['definition'],q['annotations']))
             if self.path!='/api/evaluate':
                 return self.respond({'error':'Not found'},status=404)
             size=int(self.headers.get('Content-Length','0'))

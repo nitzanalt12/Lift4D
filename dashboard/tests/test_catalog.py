@@ -66,6 +66,13 @@ class CatalogTests(unittest.TestCase):
         self.assertIn('Surface-aware',entry['experiment_label'])
         self.assertEqual(entry['kind'],'missing')
 
+    def test_video_anchor_pilot_marks_draft_observations(self):
+        run=self.make_run('anchor-pilot','2.6');self.manifest(run,'video_anchors',30000,False)
+        self.write(run/'config.json',{'experiment':'2.6','source_checkpoint':30000,'annotation_review_status':'assistant-draft; review required'})
+        entry=build(self.root)['entries'][0]
+        self.assertEqual(entry['checkpoint'],'video_anchors:30000')
+        self.assertIn('partial',entry['checkpoint_label']);self.assertIn('draft anchors',entry['checkpoint_label'])
+
     def test_finetune_checkpoint_without_render_is_selectable(self):
         run=self.make_run('trained','2.3');self.manifest(run,'mesh_finetune',1000)
         checkpoint=run/'checkpoints/delta-000250.pt';checkpoint.parent.mkdir();checkpoint.write_bytes(b'atomic fixture')
