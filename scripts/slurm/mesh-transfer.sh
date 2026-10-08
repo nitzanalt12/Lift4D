@@ -33,5 +33,7 @@ for sequence in "$@"; do
             --sequence "$sequence" --variant "$variant" \
             --output "$campaign/${sequence}-${variant}" \
             > "$campaign/logs/${sequence}-${variant}.log" 2>&1
+        mkdir -p "$campaign/${sequence}-${variant}/logs"
+        cp "$campaign/logs/${sequence}-${variant}.log" "$campaign/${sequence}-${variant}/logs/transfer.log"
     done
 done
