@@ -116,8 +116,34 @@ regularization or extra mask fitting are introduced. Masks and shape distortion
 alone cannot certify which overlapping leg is which. These remain separate
 possible protocol changes, not an implicit part of 2.5.
 
+Completed camel result: `runs/sam3d_mesh_surface/camel-2.5-20261008`, SLURM job
+102372, 90 frames, every learned tensor bitwise unchanged. All metrics below use
+the same 90 explicit input-frame IDs, target label 255 and alpha threshold 0.5.
+Boundary columns average each frame's mean / p95, not pooled sequence distances.
+
+| Variant | Mask IoU | Boundary mean / p95 (px) | Object PSNR | Object LPIPS | Mean frame edge stretch p95 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 2.1 original transfer | 0.7450 | 6.83 / 22.64 | 10.68 | 0.4584 | 10.780 |
+| 2.4 ARAP lambda 10, 15 iterations | 0.7308 | 6.99 / 21.14 | 9.78 | 0.4427 | 2.172 |
+| 2.4 ARAP lambda 100, 15 iterations | 0.7313 | 7.27 / 22.38 | 9.59 | 0.4400 | 1.294 |
+| 2.5 surface-base transfer | 0.6851 | 8.24 / 23.32 | 8.88 | 0.4314 | 2.261 |
+
+Surface transfer reduces severe stretching but worsens silhouette alignment and
+does not resolve observed leg confusion. Do not promote this pilot to a new
+baseline or interpret improved LPIPS / rigidity as correct anatomical motion.
+Full per-frame cached evaluation results and requests are saved in
+`runs/motion_diagnostics/camel-20261008-v2/full-sequence-comparison.json`;
+convergence checks, mapping diagnostics and feature-continuity statistics are
+saved alongside it. The initial diagnostic job 102367 stopped on an unanchored
+component; job 102369 completed after explicitly recording unavailable paths.
+The original failed diagnostic directory is retained separately for provenance.
+
 Checks: `python -m unittest experiment2.checks.test_surface_weights
 dashboard.tests.test_catalog -v`. Folded-strip and disconnected-component tests
 check surface locality, unavailable paths, explicit preservation policy, invalid
 weight rejection, and partial-run checkpoint catalog identity. Real GPU pilot
 checks reproduction, finite vertices and frozen learned state.
+`dashboard/tests/surface_browser.cjs` checks the real completed 2.5 selection,
+90-frame metric coverage, source checkpoint, five plots, decoded images at the
+same frame ID and overlay. Set the same Playwright / Chromium environment
+variables as the existing dashboard integration checks.
