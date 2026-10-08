@@ -72,20 +72,6 @@ def views(run, sequence):
     if sequence not in read_json(run / 'inventory.json'):
         raise ValueError('Sequence is not in this run inventory')
     result = []
-    video = run / 'sam3d' / f'davis_{sequence}' / 'comparison.mp4'
-    log = run / 'logs' / f'{sequence}_reconstruction.log'
-    try:
-        # The producer prints this only after closing the encoder. Size/age alone
-        # cannot distinguish an MP4 still being written from a completed one.
-        marker = f'Comparison video saved: {video.resolve()}'
-        if marker in stable_bytes(log).decode(errors='replace'):
-            stable_bytes(video)
-            result.append({'id': str(video.relative_to(run)),
-                           'label': 'Reconstruction · saved comparison video (view only)',
-                           'kind': 'video', 'stage': 'reconstruction', 'checkpoint': None,
-                           'reason': 'Saved comparison: input left, SAM3D render right. Encoded/padded RGB; no alpha or verified video frame map. Alignment metrics and overlay unavailable.'})
-    except (OSError, ValueError):
-        pass
     for p in sorted(run.glob('dashboard_exports/*.json')):
         try:
             m = read_json(p)

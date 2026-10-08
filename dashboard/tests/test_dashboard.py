@@ -3,7 +3,7 @@ from pathlib import Path
 import tempfile
 import unittest
 import numpy as np
-from dashboard.artifacts import frame_index, arrays, stable_bytes, inside, views
+from dashboard.artifacts import frame_index, arrays, stable_bytes, inside
 from dashboard.demo import create
 from dashboard.metrics import evaluate_arrays, cached_evaluate
 
@@ -99,20 +99,6 @@ class Artifacts(unittest.TestCase):
         os.utime(p,(time.time()-5,time.time()-5))
         with self.assertRaisesRegex(ValueError,'finished writing'):stable_bytes(p)
         with self.assertRaises(ValueError):inside(self.run,'../outside')
-
-    def test_video_requires_encoder_completion(self):
-        import os,time
-        p=self.run/'sam3d/davis_synthetic/comparison.mp4';p.parent.mkdir(parents=True)
-        p.write_bytes(b'synthetic-test-video-bytes')
-        log=self.run/'logs/synthetic_reconstruction.log';log.parent.mkdir()
-        log.write_text('Rendering comparison video...')
-        for f in [p,log]:os.utime(f,(time.time()-5,time.time()-5))
-        self.assertFalse(any(v['kind']=='video' for v in views(self.run,'synthetic')))
-        log.write_text(f'Comparison video saved: {p.resolve()}\n')
-        os.utime(log,(time.time()-5,time.time()-5))
-        video=next(v for v in views(self.run,'synthetic') if v['kind']=='video')
-        records,_,_=frame_index(self.run,'synthetic',video['id'])
-        self.assertFalse(any(r['alignment'] for r in records))
     def test_cache_settings_and_missing(self):
         settings={'object_id':1,'alpha_threshold':0.5,'lpips':False}
         a=cached_evaluate(self.index(),settings,self.root/'cache')
