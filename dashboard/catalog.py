@@ -60,11 +60,14 @@ def build(root, include_auxiliary=False):
                     checkpoint_label=f'{label} · {iteration:,}' if iteration is not None else ('Not available · No saved render' if chosen['kind']=='missing' else 'Saved render · checkpoint ID unavailable')
                     if complete is False:checkpoint_label+=' · partial'
                     if iteration is not None and chosen['kind']=='missing':checkpoint_label+=' · renders unavailable'
+                    execution_label=meta.get('display_label')
+                    if experiment=='2.4' and config.get('iterations'):
+                        execution_label=f'{execution_label or "ARAP"} · {config["iterations"]} iterations'
                     entries.append({'animal':sequence,'animal_label':ANIMALS.get(sequence,sequence),'experiment':experiment,
                                     'experiment_label':EXPERIMENTS.get(experiment,experiment),'checkpoint':checkpoint,
                                     'checkpoint_label':checkpoint_label,'stage':stage,'iteration':iteration,
                                     'run':run_id,'view':chosen['id'],'kind':chosen['kind'],'complete':complete,
-                                    'created_utc':meta.get('created_utc'),'execution_label':meta.get('display_label'),'technical':technical,'demo':detail['demo'],
+                                    'created_utc':meta.get('created_utc'),'execution_label':execution_label,'technical':technical,'demo':detail['demo'],
                                     'alternative_views':[v['id'] for v in candidates if v!=chosen]})
         except (OSError,ValueError,TypeError,KeyError) as error:
             issues.append({'run':run_id,'reason':str(error)})
