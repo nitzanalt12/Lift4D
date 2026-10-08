@@ -10,6 +10,7 @@ from urllib.parse import urlparse, parse_qs
 import numpy as np
 from PIL import Image
 from . import artifacts as a
+from .catalog import build as result_catalog
 from .metrics import boundary, cached_evaluate, local_lpips
 
 STATIC = Path(__file__).parent/'static'
@@ -35,6 +36,8 @@ class Handler(BaseHTTPRequestHandler):
                 name = 'index.html' if url.path=='/' else url.path[1:]
                 mime = {'index.html':'text/html; charset=utf-8','app.js':'text/javascript','style.css':'text/css'}[name]
                 return self.respond((STATIC/name).read_bytes(),mime)
+            if url.path=='/api/catalog':
+                return self.respond(result_catalog(self.server.root,q.get('auxiliary')=='1'))
             if url.path=='/api/runs':
                 return self.respond({'runs':a.runs(self.server.root),'root':str(self.server.root)})
             if url.path=='/api/run':

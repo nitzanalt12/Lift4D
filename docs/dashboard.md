@@ -2,6 +2,7 @@
 
 The dashboard reads saved artifacts. It never imports LIFT4D, runs reconstruction,
 loads a Gaussian checkpoint, changes training code or uses a GPU. Implementation:
+`dashboard/catalog.py` (animal/experiment/checkpoint catalog),
 `dashboard/artifacts.py` (adapters), `dashboard/metrics.py` (CPU evaluation and
 cache), `dashboard/server.py` (local HTTP), `dashboard/static/` (browser UI).
 No frontend build or external CDN is needed.
@@ -25,7 +26,8 @@ That installation supports all metrics except LPIPS until torch, torchvision,
 The dashboard does not download weights. In this environment those weights are
 already cached. LPIPS runs explicitly on CPU with two threads.
 
-Select a run, sequence and saved render/checkpoint. The shared frame slider,
+Select an animal, experiment and checkpoint. An execution selector appears only
+when multiple runs match the same selection. The shared frame slider,
 play/pause, charts and worst-frame buttons all use the same explicit input frame
 IDs. Playback fps is a viewing speed, not inferred original-video timing.
 Verified export timestamps are displayed; when absent, time is unavailable.
@@ -174,7 +176,7 @@ python -m unittest discover -s dashboard/tests -v
 python -m dashboard.demo --runs-root runs/dashboard-demo
 ```
 
-Select `dashboard-demo/DEMO-synthetic` in the viewer. The orange DEMO banner,
+Enable **Show setup / smoke checks**, then select animal `synthetic` and experiment `DEMO` in the viewer. The orange DEMO banner,
 checkpoint and commit identify synthetic results. The intentionally shifted
 frame `00007` should be worst by IoU. Demo creation refuses to overwrite an
 existing run. It does not copy demonstration scores into real runs.
@@ -192,3 +194,40 @@ overlay and worst-frame navigation. Python checks cover identity/empty masks,
 known boundary displacement, target-only PSNR, alpha thresholds, missing alpha,
 LPIPS ROI preprocessing, frame/camera/time validation, strict dimensions,
 partial writes, native panel extraction and cache invalidation.
+
+
+## Organized result selection and output index
+
+The default viewer presents **animal → experiment → checkpoint**. Baseline is
+experiment 1; experiments 2.1 and 2.2 are frozen final/geometry mesh transfer;
+2.3 is mesh fine-tuning. Stage is explicit in checkpoint labels: geometry 20000
+and appearance 30000 are baseline iterations, while fine-tuning 1000 means
+1000 additional pilot steps starting from baseline 30000. Saved intermediate
+fine-tuning checkpoints without renders are selectable and explicitly unavailable
+for visualization; the dashboard does not render them. Default selection is
+the latest available checkpoint; refresh preserves an explicit current selection.
+
+Scientific identity comes from saved run configuration/metadata and view stage/
+checkpoint, not folder order. A verified RGB/alpha export replaces the redundant
+native comparison option for the same run/stage/checkpoint. If multiple executions
+exist for the same selection, an **Execution** selector appears so they remain
+accessible independently. Setup, unlaunched stubs, synthetic demos and gradient
+checks are hidden by default, accessible through the auxiliary checkbox. Invalid
+superseded runs without valid metadata remain excluded. Partial real runs are
+supported; missing renders and alignment metrics retain their explanations.
+
+Create or refresh the navigable output index:
+
+```bash
+python -m dashboard.index_outputs --runs-root runs
+```
+
+Browse `runs/results/<animal>/<experiment>/<stage>-<checkpoint>/<execution>/`.
+Each directory contains relative links to the original run, renders, manifest and
+checkpoint when available, plus `selection.json`. `catalog.json` contains the
+complete indexed result selections. No data, weights or renders are copied, moved
+or modified. Original paths remain valid for checkpoint provenance, evaluation
+caches and scripts. The index is ignored by Git. Refresh the index command when
+new outputs appear; the dashboard discovers new outputs independently on refresh.
+The index refuses to replace ordinary existing files. Retired index entries are
+historical aliases, not live discovery; the generated catalog is the current view.

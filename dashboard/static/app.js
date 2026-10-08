@@ -8,9 +8,58 @@ function stop(){if(timer)$('scrubber').value=displayedIndex;drawToken++;clearTim
 function fmt(v){return v===null||v===undefined?'לא זמין · N/A':v==='Infinity'?'∞':Number(v).toFixed(3)}
 function resetMetrics(){metrics=null;cards();$('charts').replaceChildren();$('worst').replaceChildren();$('evalStatus').textContent='Metrics require verified input-camera renders, matching IDs/times and exact resolutions.'}
 function cards(){ $('cards').replaceChildren();for(const [k,n] of Object.entries(names)){const s=metrics?.summary[k];const d=document.createElement('div');d.className='card';const label=document.createElement('span');label.textContent=n;const b=document.createElement('b');b.textContent=fmt(s?.mean);const small=document.createElement('small');small.textContent=s?`${s.available_frames}/${frames.length} frames${s.perfect_frames?' · perfect excluded from finite mean':''}`:'Not computed';if(s&&k==='boundary_p95')small.textContent+=' · mean of frame p95s';d.append(label,b,small);$('cards').append(d)}}
-async function refresh(){stop();const gen=++generation;const old=$('run').value;try{const data=await api('/api/runs');if(gen!==generation)return;choices($('run'),data.runs,old);if(!data.runs.length){frames=[];$('status').textContent='לא זמין · No runs found in '+data.root;return}await loadRun()}catch(e){$('status').textContent=e.message}}
-async function loadRun(){stop();drawToken++;const gen=++generation;resetMetrics();try{const data=await api('/api/run?'+query());if(gen!==generation)return;detail=data;$('demo').hidden=!data.demo;choices($('sequence'),data.sequences,$('sequence').value);$('details').textContent=JSON.stringify(data,null,2);await loadSequence()}catch(e){$('status').textContent=e.message}}
-async function loadSequence(){stop();drawToken++;const gen=++generation;resetMetrics();try{const data=await api('/api/views?'+query());if(gen!==generation)return;choices($('view'),data.views,$('view').value);const selected=data.views.find(v=>v.id===$('view').value);const upgraded=data.views.find(v=>v.kind==='manifest'&&v.stage==='appearance'&&Number(v.checkpoint)===Number(selected?.checkpoint));if(selected?.kind==='composite'&&selected?.stage==='node_delta'&&upgraded)$('view').value=upgraded.id;if(!data.views.length)choices($('view'),[{id:'',label:'No saved render yet'}]);await loadFrames()}catch(e){$('status').textContent=e.message}}
+let catalog=[];
+function uniqueEntries(entries,key,label){return [...new Map(entries.map(e=>[e[key],{id:e[key],label:e[label]}])).values()]}
+async function refresh(){
+ stop();const gen=++generation;resetMetrics();try{
+  const data=await api('/api/catalog?auxiliary='+($('auxiliary').checked?'1':'0'));if(gen!==generation)return;
+  catalog=data.entries;choices($('sequence'),uniqueEntries(catalog,'animal','animal_label'),$('sequence').value);
+  if(!catalog.length){clearSelection('No experiment results found in '+data.root);return}
+  await selectAnimal();
+ }catch(e){$('status').textContent=e.message}
+}
+function clearSelection(reason){
+ stop();drawToken++;frames=[];detail=null;resetMetrics();$('input').hidden=true;$('render').hidden=true;
+ $('renderMissing').hidden=false;$('renderMissing').textContent=reason;$('status').textContent=reason;
+ $('frameLabel').textContent='';$('selectionSummary').textContent='';$('demo').hidden=true;
+ for(const id of ['experiment','checkpoint','run'])choices($(id),[]);$('view').value='';$('runChoice').hidden=true;
+}
+async function selectAnimal(){
+ stop();generation++;drawToken++;resetMetrics();
+ const entries=catalog.filter(e=>e.animal===$('sequence').value);
+ choices($('experiment'),uniqueEntries(entries,'experiment','experiment_label'),$('experiment').value);
+ await selectExperiment();
+}
+async function selectExperiment(){
+ stop();generation++;drawToken++;resetMetrics();
+ const entries=catalog.filter(e=>e.animal===$('sequence').value&&e.experiment===$('experiment').value);
+ choices($('checkpoint'),uniqueEntries(entries,'checkpoint','checkpoint_label'),$('checkpoint').value);
+ // Default to latest available scientific checkpoint; preserve explicit choice on refresh.
+ if(!entries.some(e=>e.checkpoint===lastCheckpoint&&e.experiment===lastExperiment&&e.animal===lastAnimal)){
+  const latest=[...entries].sort((a,b)=>(b.iteration??-1)-(a.iteration??-1)||Number(Boolean(b.complete))-Number(Boolean(a.complete)))[0];
+  if(latest)$('checkpoint').value=latest.checkpoint;
+ }
+ await selectCheckpoint();
+}
+let lastCheckpoint='',lastExperiment='',lastAnimal='';
+async function selectCheckpoint(){
+ stop();generation++;drawToken++;resetMetrics();
+ const entries=catalog.filter(e=>e.animal===$('sequence').value&&e.experiment===$('experiment').value&&e.checkpoint===$('checkpoint').value);
+ const executions=[...entries].sort((a,b)=>(b.created_utc||'').localeCompare(a.created_utc||'')||b.run.localeCompare(a.run));
+ const old=$('run').value;
+ choices($('run'),executions.map(e=>({id:e.run,label:(e.created_utc?new Date(e.created_utc).toLocaleString():'Execution')+' · '+e.run.split('/').at(-1)})),old);
+ $('runChoice').hidden=executions.length<=1;
+ lastCheckpoint=$('checkpoint').value;lastExperiment=$('experiment').value;lastAnimal=$('sequence').value;
+ await loadRun();
+}
+async function loadRun(){
+ stop();drawToken++;const gen=++generation;resetMetrics();$('input').hidden=true;$('render').hidden=true;$('frameLabel').textContent='';$('renderMissing').hidden=false;$('renderMissing').textContent='Loading selected result…';
+ const entry=catalog.find(e=>e.animal===$('sequence').value&&e.experiment===$('experiment').value&&e.checkpoint===$('checkpoint').value&&e.run===$('run').value);
+ if(!entry){clearSelection('No saved result for this selection');return}
+ $('view').value=entry.view;
+ $('selectionSummary').textContent=[entry.animal_label,entry.experiment_label,entry.checkpoint_label,entry.demo?'DEMO':entry.kind==='manifest'?'RGB + alpha':entry.kind==='missing'?'Render unavailable':'RGB comparison · alpha unavailable'].join(' / ');
+ try{const data=await api('/api/run?'+query());if(gen!==generation)return;detail=data;$('demo').hidden=!data.demo;await loadFrames()}catch(e){$('status').textContent=e.message}
+}
 async function loadFrames(){stop();$('evaluate').disabled=false;drawToken++;const gen=++generation;resetMetrics();try{const data=await api('/api/frames?'+query());if(gen!==generation)return;frames=data.frames;const suggested=data.manifest?.target_object_id??(data.target_mask_values?.length===1?data.target_mask_values[0]:null);if(suggested!==null)$('object').value=suggested;$('scrubber').max=Math.max(0,frames.length-1);$('scrubber').value=Math.min(Number($('scrubber').value),frames.length-1);$('details').textContent=JSON.stringify({run:detail,view:data.view,export:data.manifest},null,2);await showFrame();if(gen===generation&&data.manifest?.complete&&data.view?.kind==='manifest')$('evaluate').click()}catch(e){frames=[];$('status').textContent=e.message}}
 async function showFrame(){
  const index=Number($('scrubber').value),f=frames[index];if(!f)return;const token=++drawToken;
@@ -31,7 +80,7 @@ async function showFrame(){
 function drawCharts(){ $('charts').replaceChildren();if(!metrics)return;for(const [key,label] of Object.entries(names)){const d=document.createElement('div');d.className='chart';const title=document.createElement('span');title.textContent=label;d.append(title);const values=metrics.frames.map(r=>typeof r[key]==='number'?r[key]:null);const good=values.filter(v=>v!==null);if(!good.length){const p=document.createElement('p');p.textContent='לא זמין · No finite verified measurements';d.append(p)}else{const lo=Math.min(...good),hi=Math.max(...good),n=Math.max(1,values.length-1);const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 600 130');const x=i=>20+i/n*560,y=v=>110-(v-lo)/(hi-lo||1)*90;let points=[];function segment(){if(!points.length)return;const line=document.createElementNS(svg.namespaceURI,'polyline');line.setAttribute('points',points.join(' '));line.setAttribute('fill','none');line.setAttribute('stroke','#72ddb7');line.setAttribute('stroke-width','2');svg.append(line);points=[]}values.forEach((v,i)=>{if(v===null)segment();else points.push(`${x(i)},${y(v)}`)});segment();const cursor=document.createElementNS(svg.namespaceURI,'line');const cx=x(Number($('scrubber').value));for(const [k,v] of Object.entries({x1:cx,x2:cx,y1:10,y2:115,stroke:'#ffcc80'}))cursor.setAttribute(k,v);svg.append(cursor);svg.onclick=e=>{const r=svg.getBoundingClientRect();$('scrubber').value=Math.round(Math.max(0,Math.min(1,((e.clientX-r.left)/r.width*600-20)/560))*n);showFrame()};d.append(svg);const p=document.createElement('p');p.textContent=`Range ${fmt(lo)}–${fmt(hi)} · x: explicit frame IDs in input inventory · click to seek`;d.append(p)}$('charts').append(d)}}
 function worst(){ $('worst').replaceChildren();if(!metrics)return;const k=$('metric').value;const low=['iou','psnr'].includes(k);const ranked=metrics.frames.filter(r=>typeof r[k]==='number').sort((a,b)=>low?a[k]-b[k]:b[k]-a[k]).slice(0,10);for(const r of ranked){const b=document.createElement('button');b.textContent=`${r.id} · ${fmt(r[k])}`;b.onclick=()=>{$('scrubber').value=frames.findIndex(f=>f.id===r.id);showFrame()};$('worst').append(b)}}
 $('evaluate').onclick=async()=>{const gen=generation;$('evaluate').disabled=true;$('evalStatus').textContent='Evaluating saved pixels on CPU / reading cache…';try{const result=await api('/api/evaluate',{run:$('run').value,sequence:$('sequence').value,view:$('view').value,object:$('object').value,threshold:$('threshold').value,lpips:$('lpips').checked});if(gen!==generation)return;metrics=result;cards();drawCharts();worst();$('details').textContent=JSON.stringify({run:detail,evaluation:metrics},null,2);await showFrame()}catch(e){$('evalStatus').textContent=e.message}finally{if(gen===generation)$('evaluate').disabled=false}};
-$('refresh').onclick=refresh;$('run').onchange=loadRun;$('sequence').onchange=loadSequence;$('view').onchange=loadFrames;$('scrubber').oninput=showFrame;$('overlay').onchange=showFrame;$('blend').oninput=showFrame;$('metric').onchange=worst;
+$('refresh').onclick=refresh;$('auxiliary').onchange=refresh;$('run').onchange=loadRun;$('sequence').onchange=selectAnimal;$('experiment').onchange=selectExperiment;$('checkpoint').onchange=selectCheckpoint;$('scrubber').oninput=showFrame;$('overlay').onchange=showFrame;$('blend').oninput=showFrame;$('metric').onchange=worst;
 for(const id of ['object','threshold','lpips'])$(id).onchange=()=>{generation++;resetMetrics();showFrame()};
 $('play').onclick=()=>{if(timer){stop();return}if(!frames.length)return;$('play').textContent='Ⅱ Pause';const fps=Math.max(1,Math.min(60,Number($('fps').value)||8));async function tick(){if(!timer)return;const i=Number($('scrubber').value);if(i>=frames.length-1){stop();return}$('scrubber').value=i+1;await showFrame();if(timer)timer=setTimeout(tick,1000/fps)}timer=setTimeout(tick,1000/fps)};
 refresh();
