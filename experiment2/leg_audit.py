@@ -71,7 +71,7 @@ def cross_leg_summary(labels,node_labels,indices,weights):
     by_leg=[]
     for region in range(2,len(REGIONS)):
         active=labels==region
-        by_leg.append({'region':REGIONS[region],'mean_other_leg_mass':float(mass[active].mean()),
-            'fraction_vertices_above_20pct_other_leg_mass':float((mass[active]>.2).mean())})
-    return {'mean_other_leg_mass':float(mass[leg].mean()),'by_leg':by_leg,
+        by_leg.append({'region':REGIONS[region],'mean_other_leg_mass':float(mass[active].mean()) if active.any() else None,
+            'fraction_vertices_above_20pct_other_leg_mass':float((mass[active]>.2).mean()) if active.any() else None})
+    return {'mean_other_leg_mass':float(mass[leg].mean()) if leg.any() else None,'by_leg':by_leg,
             'definition':'Mean sum of weights attached to a different canonical leg core; body/unclassified node influence is not counted as crossing. Diagnostic, not anatomical ground truth.'},mass

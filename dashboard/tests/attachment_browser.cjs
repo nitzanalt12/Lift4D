@@ -1,0 +1,32 @@
+const assert=require('node:assert/strict');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+(async()=>{
+ const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE,args:['--no-sandbox','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const page=await browser.newPage({viewport:{width:1600,height:1100}});page.setDefaultTimeout(180000);
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto((process.env.DASHBOARD_URL||'http://127.0.0.1:8766')+'/attachment-audit');
+ await page.waitForFunction(()=>document.querySelector('#plot').dataset.ready==='true');
+ assert.equal(await page.locator('#regions span').count(),6);
+ assert.equal(await page.evaluate(()=>document.querySelector('#plot').data[0].x.length),152498);
+ const labels=await page.evaluate(()=>document.querySelector('#plot').data[0].vertexcolor.slice());
+ await page.selectOption('#pose','00030');
+ await page.waitForFunction(()=>document.querySelector('#plot').dataset.ready==='true'&&document.querySelector('#plot').dataset.frame==='00030');
+ // Verify fixed vertex colors survive motion and coordinates are saved data.
+ const newColors=await page.evaluate(()=>document.querySelector('#plot').data[0].vertexcolor.slice());assert.deepEqual(newColors,labels);
+ await page.selectOption('#weights','surface');
+ await page.waitForFunction(()=>document.querySelector('#plot').dataset.ready==='true'&&document.querySelector('#plot').dataset.weights==='surface');
+ assert.match(await page.locator('#summary').innerText(),/Mean other-leg weight: 0.00%/);
+ await page.selectOption('#weights','original');
+ await page.waitForFunction(()=>document.querySelector('#plot').dataset.ready==='true'&&document.querySelector('#plot').dataset.weights==='original');
+ const options=await page.locator('#crossNodes option').count();assert.ok(options>1);
+ const selected=await page.locator('#crossNodes option').nth(1).getAttribute('value');await page.selectOption('#crossNodes',selected);
+ await page.waitForFunction(id=>document.querySelector('#plot').dataset.ready==='true'&&document.querySelector('#nodeDetails').textContent.includes('Node '+id+' ·'),selected);
+ assert.equal(await page.locator('#colorMode').inputValue(),'influence');
+ await page.selectOption('#layer','delta');
+ await page.waitForFunction(()=>document.querySelector('#plot').dataset.ready==='true'&&document.querySelector('#plot').dataset.layer==='delta');
+ assert.equal(await page.locator('#weights option[value="surface"]').evaluate(el=>el.disabled),true);
+ await page.selectOption('#layer','base');await page.selectOption('#pose','canonical');await page.selectOption('#colorMode','regions');
+ await page.waitForFunction(()=>document.querySelector('#plot').dataset.ready==='true'&&document.querySelector('#plot').dataset.layer==='base'&&document.querySelector('#plot').dataset.frame==='canonical');
+ await page.screenshot({path:'/tmp/lift4d-leg-attachment-audit.png',fullPage:true});
+ assert.deepEqual(errors,[]);console.log('PASS: complete saved audit, full geometry, fixed leg colors across poses, original/surface influence, cross-leg node inspection, correct delta availability');await browser.close();
+})().catch(e=>{console.error(e);process.exit(1)});

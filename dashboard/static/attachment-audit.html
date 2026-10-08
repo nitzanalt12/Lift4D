@@ -1,0 +1,21 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>LIFT4D · Leg attachment audit</title><link rel="stylesheet" href="/style.css">
+<style>#plot{height:680px;width:100%}.audit-controls{display:flex;gap:16px;flex-wrap:wrap}.audit-controls label{display:flex;flex-direction:column;gap:6px}#regions span{margin-right:18px}#nodeDetails{white-space:pre-wrap}a{color:#47c7ed}table{border-collapse:collapse;width:100%}td,th{padding:7px;border-bottom:1px solid #263447;text-align:left}</style>
+<header><div><span class="tag">READ ONLY · SAVED DIAGNOSTICS</span><h1>Leg attachment <span>audit</span></h1></div><a href="/">← Results dashboard</a></header>
+<main><section class="audit-controls">
+<label>Diagnostic export<select id="audit"></select></label>
+<label>Pose<select id="pose"><option value="canonical">Canonical mesh</option></select></label>
+<label>Deformation layer<select id="layer"><option value="base">Frozen base</option><option value="delta">Appearance delta</option></select></label>
+<label>Blend weights<select id="weights"><option value="original">Original 2.1</option><option value="surface">Surface 2.5 · base only</option></select></label>
+<label>Mesh colors<select id="colorMode"><option value="regions">Fixed leg identities</option><option value="influence">Selected node influence</option><option value="cross">Other-leg weight · black → red</option></select></label>
+<label>Show control nodes<select id="nodeFilter"><option value="legs">Attached to leg cores</option><option value="all">All nodes</option><option value="disputed">Attachment / learned-owner disagreement</option></select></label>
+<label>Node colors<select id="nodeColors"><option value="attached">Canonical attachment region</option><option value="owner">High-purity Gaussian receiver region</option></select></label>
+<label>Control node ID<input id="node" type="number" min="0" value="0"></label>
+<label>Mesh opacity<input id="meshOpacity" type="range" min="0.1" max="1" step="0.05" value="0.65"></label>
+<label>Nodes influencing another leg<select id="crossNodes"></select></label>
+<button id="resetCamera">Reset camera</button></section>
+<p id="status">Loading saved exports…</p><p id="regions"></p>
+<section><div id="plot"></div><p>Rotate / zoom the object; click a control point to inspect its influence. White line: selected node → its fixed canonical vertex attachment. Node motion shows the selected layer only; mesh motion includes base + delta. Source XYZ, without camera compose. Opacity is for inspection only.</p></section>
+<section><h2>Selected control node</h2><p id="nodeDetails"></p><table><thead><tr><th>Receiver region</th><th>Mesh influence share</th><th>Original Gaussian influence share</th></tr></thead><tbody id="nodeTable"></tbody></table></section>
+<section><h2>Other-leg influence across leg cores</h2><div id="summary"></div><p>Leg cores are provisional geometry-derived regions below the recorded Z cutoff. Gray fragments remain unclassified. −X/+X are coordinate sides, not anatomical left/right. “Other-leg influence” compares receiver labels with spatial attachment labels; it is a diagnostic, not proof of wrong anatomy. No attachment or experiment is modified here.</p></section>
+<details><summary>Export provenance and definitions</summary><pre id="provenance"></pre></details></main>
+<script src="/plotly.js"></script><script src="/attachment-audit.js"></script></html>

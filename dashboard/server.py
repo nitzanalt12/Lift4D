@@ -13,6 +13,7 @@ from . import artifacts as a
 from .catalog import build as result_catalog
 from .comparison import pair as compare_views
 from .metrics import boundary, cached_evaluate, local_lpips
+from . import attachment_audit
 
 STATIC = Path(__file__).parent/'static'
 EVAL_LOCK = threading.Lock()
@@ -33,10 +34,16 @@ class Handler(BaseHTTPRequestHandler):
         try:
             url = urlparse(self.path)
             q = {k:v[0] for k,v in parse_qs(url.query).items()}
-            if url.path in ['/', '/app.js', '/comparison.js', '/style.css']:
-                name = 'index.html' if url.path=='/' else url.path[1:]
-                mime = {'index.html':'text/html; charset=utf-8','app.js':'text/javascript','comparison.js':'text/javascript','style.css':'text/css'}[name]
+            if url.path in ['/', '/app.js', '/comparison.js', '/style.css','/attachment-audit','/attachment-audit.js']:
+                name = 'index.html' if url.path=='/' else 'attachment-audit.html' if url.path=='/attachment-audit' else url.path[1:]
+                mime = 'text/html; charset=utf-8' if name.endswith('.html') else 'text/css' if name.endswith('.css') else 'text/javascript'
                 return self.respond((STATIC/name).read_bytes(),mime)
+            if url.path=='/plotly.js':
+                from plotly.offline import get_plotlyjs
+                return self.respond(get_plotlyjs().encode(),'text/javascript')
+            if url.path=='/api/attachment-audits':return self.respond({'audits':attachment_audit.exports(self.server.root)})
+            if url.path=='/api/attachment-audit':return self.respond(attachment_audit.read(self.server.root,q['audit'])[1])
+            if url.path=='/api/attachment-asset':return self.respond(attachment_audit.asset(self.server.root,q['audit'],q['file']),'application/octet-stream')
             if url.path=='/api/catalog':
                 return self.respond(result_catalog(self.server.root,q.get('auxiliary')=='1'))
             if url.path=='/api/runs':
