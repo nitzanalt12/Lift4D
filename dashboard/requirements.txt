@@ -1,0 +1,5 @@
+numpy>=1.26,<3
+scipy>=1.11,<2
+Pillow>=10,<13
+# Optional CPU appearance evaluation: torch, torchvision and lpips==0.1.4.
+# The existing lift4d environment already supplies these; no installation required there.

@@ -38,6 +38,9 @@ sam3d/notebook/images/
 sam3d/notebook/gaussians/
 sam3d/notebook/meshes/
 tests/
+!/dashboard/tests/
+!/dashboard/tests/*.py
+!/dashboard/tests/*.cjs
 
 # demo videos (download separately)
 *.mp4

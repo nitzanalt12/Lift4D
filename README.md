@@ -273,3 +273,8 @@ This project builds on [SAM 3D Objects](https://github.com/facebookresearch/sam-
 
 See [minimal experiment setup and commands](docs/experiments.md) for the pinned
 upstream commit, fixed DAVIS subset, configurable paths and isolated run records.
+
+## Local results dashboard
+
+See [dashboard setup, evaluation definitions and artifact contract](docs/dashboard.md)
+for the read-only synchronized result viewer and CPU metric cache.
