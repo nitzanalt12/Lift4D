@@ -11,6 +11,7 @@ import numpy as np
 from PIL import Image
 from . import artifacts as a
 from .catalog import build as result_catalog
+from .comparison import pair as compare_views
 from .metrics import boundary, cached_evaluate, local_lpips
 
 STATIC = Path(__file__).parent/'static'
@@ -32,9 +33,9 @@ class Handler(BaseHTTPRequestHandler):
         try:
             url = urlparse(self.path)
             q = {k:v[0] for k,v in parse_qs(url.query).items()}
-            if url.path in ['/', '/app.js', '/style.css']:
+            if url.path in ['/', '/app.js', '/comparison.js', '/style.css']:
                 name = 'index.html' if url.path=='/' else url.path[1:]
-                mime = {'index.html':'text/html; charset=utf-8','app.js':'text/javascript','style.css':'text/css'}[name]
+                mime = {'index.html':'text/html; charset=utf-8','app.js':'text/javascript','comparison.js':'text/javascript','style.css':'text/css'}[name]
                 return self.respond((STATIC/name).read_bytes(),mime)
             if url.path=='/api/catalog':
                 return self.respond(result_catalog(self.server.root,q.get('auxiliary')=='1'))
@@ -43,6 +44,8 @@ class Handler(BaseHTTPRequestHandler):
             if url.path=='/api/run':
                 return self.respond(a.describe(self.server.root,q['run']))
             run = a.inside(self.server.root,q['run'])
+            if url.path=='/api/compare':
+                return self.respond(compare_views(run,a.inside(self.server.root,q['run_b']),q['sequence'],q.get('view'),q.get('view_b')))
             if url.path=='/api/views':
                 return self.respond({'views':a.views(run,q['sequence'])})
             records, view, manifest = a.frame_index(run,q['sequence'],q.get('view'))

@@ -231,3 +231,46 @@ caches and scripts. The index is ignored by Git. Refresh the index command when
 new outputs appear; the dashboard discovers new outputs independently on refresh.
 The index refuses to replace ordinary existing files. Retired index entries are
 historical aliases, not live discovery; the generated catalog is the current view.
+
+
+## Compare experiments for the same animal
+
+Enable **Compare A / B**. The main selectors choose A; the additional B row
+independently chooses experiment, checkpoint and execution for the same animal.
+This also supports comparing two ARAP strengths or two checkpoints of one
+experiment. Input, A and B render panels share one explicit input frame ID,
+play/pause, scrubber and chart cursor. Overlay applies the same selected object,
+alpha threshold and blend to each render against its input. No alignment or
+resizing correction is introduced.
+
+Charts use green A and blue B curves with a shared axis; gaps stay gaps. Each
+curve shows its view's available individual measurements joined by frame ID.
+Summary cards show A, B and **B minus A** using only the **same verified finite
+frame pairs for each metric**. Their coverage is explicit; partial-run averages
+are never compared over different subsets. Infinity PSNR is excluded from finite
+paired means. Higher IoU/PSNR and lower boundary/LPIPS values are preferable;
+positive delta is not uniformly an improvement across metrics. Rank worst frames
+in either A or B.
+
+The comparison adapter checks actual input and target-mask sources (same resolved
+path or identical stable content), matching exported object ID, explicit frame
+identity, input-camera parameters and time-map definitions. Incompatible input or
+mask contents prevent displaying B as a comparison. Missing frames or unverified/
+mismatched cameras/times exclude paired metrics and show a reason. Individual
+views can still be inspected when cross-view metric pairing is unavailable.
+Expanded provenance includes both run configs/commits and pairing/evaluation
+settings. Metrics reuse existing independent content-addressed caches; comparing
+two views does not run LIFT4D inference or training.
+
+Additional checks:
+
+```bash
+node dashboard/tests/paired_metrics.cjs
+PLAYWRIGHT_MODULE=/path/to/playwright CHROMIUM_EXECUTABLE=/path/to/chromium \
+  node dashboard/tests/comparison_browser.cjs
+```
+
+These cover common-ID metric coverage, missing values, camera/object/source
+mismatches, shuffled manifest order, missing B checkpoints, real 2.1/2.3 paired
+results, synchronized decoded pixels under delayed responses, overlay, refresh
+preservation and returning to single-view mode.

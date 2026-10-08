@@ -1,0 +1,11 @@
+const assert=require('node:assert/strict');
+const {pairedMetric}=require('../static/comparison.js');
+const frames=[{id:'one'},{id:'two'},{id:'three'}];
+const a={frames:[{id:'one',iou:.9},{id:'two',iou:.1},{id:'three',iou:.4}]};
+const b={frames:[{id:'three',iou:.7},{id:'one',iou:.8},{id:'two',iou:null}]};
+const proof={frames:[{id:'one',paired_verified:true},{id:'two',paired_verified:true},{id:'three',paired_verified:false}]};
+const result=pairedMetric('iou',frames,a,b,proof);
+assert.equal(result.count,1);assert.equal(result.a,.9);assert.equal(result.b,.8);assert.ok(Math.abs(result.delta+.1)<1e-12);
+assert.equal(pairedMetric('lpips',frames,a,b,proof).count,0);
+assert.equal(pairedMetric('iou',frames,a,b,null).a,null);
+console.log('PASS: paired means use explicit common verified finite frame IDs and preserve missing data');
