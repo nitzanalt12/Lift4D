@@ -25,6 +25,9 @@ class SurfaceWeightChecks(unittest.TestCase):
         np.testing.assert_array_equal(result['indices'][:,0],[0,0,0,1,1,1])
         self.assertEqual(result['vertices_with_fewer_than_k_nodes'],6)
         with self.assertRaises(ValueError):surface_weights(vertices,faces,vertices[[0]],np.ones(1),k=1)
+        unavailable=surface_weights(vertices,faces,vertices[[0]],np.ones(1),k=1,allow_unattached=True)
+        np.testing.assert_array_equal(unavailable['unattached_vertices'],[3,4,5])
+        np.testing.assert_array_equal(unavailable['weights'][3:],0)
 
 
 if __name__=='__main__':unittest.main()

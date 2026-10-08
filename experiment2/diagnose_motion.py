@@ -59,7 +59,7 @@ def main():
             old_idx=indices.cpu().numpy();old_weights=weights.cpu().numpy();nodes=module.nodes[:,:3].cpu().numpy()
             start=time.monotonic();print('Surface paths: '+label,flush=True)
             surface=surface_weights(vertices,faces,nodes,module.node_radius.cpu().numpy(),k=module.K,
-                original_indices=old_idx,node_weights=module.node_weight.cpu().numpy() if module.with_node_weight else None)
+                original_indices=old_idx,node_weights=module.node_weight.cpu().numpy() if module.with_node_weight else None,allow_unattached=True)
             old_surface=surface.pop('original_surface_distances');euclidean=np.linalg.norm(vertices[:,None,:]-nodes[old_idx],axis=2)
             ratio=old_surface/np.maximum(euclidean,1e-12)
             shortcut=(ratio>3)&(old_surface>.1*report['canonical_bbox_diagonal'])
@@ -69,11 +69,14 @@ def main():
                 'original_node_euclidean_distances':describe(euclidean),'original_node_surface_distances':describe(old_surface),
                 'surface_to_spatial_ratio':describe(ratio),'vertices_with_any_shortcut_fraction':float(shortcut.any(1).mean()),
                 'shortcut_weight_mass':describe(mass),'mean_shortcut_weight_mass':float(mass.mean()),
-                'vertices_with_fewer_than_k_nodes':surface['vertices_with_fewer_than_k_nodes']}
+                'vertices_with_fewer_than_k_nodes':surface['vertices_with_fewer_than_k_nodes'],
+                'unattached_vertices':int(len(surface['unattached_vertices'])),
+                'unattached_policy':'Unavailable surface weights (zero); never silently bridge components'}
             np.savez_compressed(out/f'{label}-weights.npz',original_indices=old_idx,original_weights=old_weights,
                 original_distances_squared=distances.cpu().numpy(),original_surface_distances=old_surface,
                 surface_indices=surface['indices'],surface_weights=surface['weights'],surface_distances=surface['distances'],
-                anchors=surface['anchors'],anchor_offsets=surface['anchor_offsets'],shortcut_weight_mass=mass)
+                anchors=surface['anchors'],anchor_offsets=surface['anchor_offsets'],shortcut_weight_mass=mass,
+                unattached_vertices=surface['unattached_vertices'])
             print(label,json.dumps(report['mapping'][label]),flush=True)
             atomic_json(out/'report.json',report)
     atomic_json(out/'report.json',report)

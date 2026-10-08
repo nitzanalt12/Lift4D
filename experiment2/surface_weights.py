@@ -23,7 +23,7 @@ def gaussian_weights(squared_distances, indices, radii, node_weights=None):
     return weights/weights.sum(1,keepdims=True)
 
 
-def surface_weights(vertices,faces,nodes,radii,k=3,original_indices=None,batch_size=32,node_weights=None):
+def surface_weights(vertices,faces,nodes,radii,k=3,original_indices=None,batch_size=32,node_weights=None,allow_unattached=False):
     vertices=np.asarray(vertices,dtype=np.float64);nodes=np.asarray(nodes,dtype=np.float64)
     if vertices.ndim!=2 or vertices.shape[1]!=3 or nodes.ndim!=2 or nodes.shape[1]!=3:
         raise ValueError('Explicit source-space XYZ arrays required')
@@ -36,7 +36,7 @@ def surface_weights(vertices,faces,nodes,radii,k=3,original_indices=None,batch_s
     count,components=connected_components(graph,directed=False)
     offsets,anchors=cKDTree(vertices).query(nodes,k=1)
     missing=set(np.unique(components))-set(components[anchors])
-    if missing:raise ValueError(f'{len(missing)} canonical components have no attached node; no spatial fallback')
+    if missing and not allow_unattached:raise ValueError(f'{len(missing)} canonical components have no attached node; no spatial fallback')
     best=np.full((len(vertices),k),np.inf);indices=np.zeros((len(vertices),k),dtype=np.int64)
     old_distances=np.full(original_indices.shape,np.inf) if original_indices is not None else None
     for start in range(0,len(nodes),batch_size):
@@ -51,8 +51,11 @@ def surface_weights(vertices,faces,nodes,radii,k=3,original_indices=None,batch_s
         order=np.lexsort((candidate_ids,candidates),axis=1)[:,:k]
         best=np.take_along_axis(candidates,order,axis=1)
         indices=np.take_along_axis(candidate_ids,order,axis=1)
-    weights=gaussian_weights(best**2,indices,radii,node_weights)
+    available=np.isfinite(best).any(1)
+    weights=np.zeros_like(best)
+    weights[available]=gaussian_weights(best[available]**2,indices[available],radii,node_weights)
     return {'indices':indices,'distances':best,'weights':weights,'anchors':anchors,
             'anchor_offsets':offsets,'original_surface_distances':old_distances,
             'components':int(count),'component_sizes':np.bincount(components).tolist(),
+            'unattached_vertices':np.flatnonzero(~available),
             'vertices_with_fewer_than_k_nodes':int(np.sum(np.isfinite(best).sum(1)<k))}
