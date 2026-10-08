@@ -1,0 +1,43 @@
+{
+  "sam3d": {
+    "repo": "facebook/sam-3d-objects",
+    "revision": "2e73555018d2741ccd486e56c24fac41155a1dc6"
+  },
+  "zero123": {
+    "repo": "stabilityai/stable-zero123",
+    "revision": "cf432fdb51b0fdf05644d2408e898dc40b0fb21a"
+  },
+  "da3": {
+    "repo": "depth-anything/DA3NESTED-GIANT-LARGE-1.1",
+    "revision": "b2359bdf726fb44ef62acca04d629dcf158053e7"
+  },
+  "moge": {
+    "repo": "Ruicheng/moge-vitl",
+    "revision": "ad326bfb61facd6c52b5a825bc1e34d7c97d9672"
+  },
+  "torch_cache": {
+    "dinov2_vitl14_reg": {
+      "url": "https://dl.fbaipublicfiles.com/dinov2/dinov2_vitl14/dinov2_vitl14_reg4_pretrain.pth",
+      "cache": "hub/checkpoints/dinov2_vitl14_reg4_pretrain.pth"
+    },
+    "alexnet": {
+      "url": "https://download.pytorch.org/models/alexnet-owt-7be5be79.pth",
+      "cache": "hub/checkpoints/alexnet-owt-7be5be79.pth",
+      "sha256_prefix": "7be5be79"
+    },
+    "vgg16": {
+      "url": "https://download.pytorch.org/models/vgg16-397923af.pth",
+      "cache": "hub/checkpoints/vgg16-397923af.pth",
+      "sha256_prefix": "397923af"
+    },
+    "piq_lpips": {
+      "url": "https://github.com/photosynthesis-team/photosynthesis.metrics/releases/download/v0.4.0/lpips_weights.pt",
+      "cache": "hub/checkpoints/lpips_weights.pt"
+    }
+  },
+  "clip_cache": {
+    "url": "https://openaipublic.azureedge.net/clip/models/b8cca3fd41ae0c99ba7e8951adf17d267cdb84cd88be6f7c2e0eca1737a03836/ViT-L-14.pt",
+    "cache": "ViT-L-14.pt",
+    "sha256_prefix": "b8cca3fd41ae0c99ba7e8951adf17d267cdb84cd88be6f7c2e0eca1737a03836"
+  }
+}

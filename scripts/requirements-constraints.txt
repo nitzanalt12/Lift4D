@@ -1,0 +1,12 @@
+# Preserve the upstream Torch/CUDA and stage-3 ABI across pip install phases.
+torch==2.5.1
+torchvision==0.20.1
+torchaudio==2.5.1
+numpy==1.26.4
+opencv-python==4.9.0.80
+plyfile<1.1
+xformers==0.0.28.post3
+transformers==4.39.3
+diffusers==0.29.2
+huggingface-hub<1.0
+gradio<6

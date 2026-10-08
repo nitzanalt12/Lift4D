@@ -53,3 +53,6 @@ tests/
 *.safetensors
 *.ply
 *.glb
+
+# Hugging Face local download metadata / partial weights
+/lift4d_scgs/extern/ldm_zero123/.cache/
