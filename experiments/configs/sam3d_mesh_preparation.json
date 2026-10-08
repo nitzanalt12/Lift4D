@@ -1,0 +1,20 @@
+{
+  "id": "sam3d_mesh_preparation",
+  "status": "preparation_only",
+  "base": "original-lift4d",
+  "subset": "experiments/subsets/davis-animals-v1.json",
+  "training_reference": "experiments/configs/baseline-animals.json",
+  "description": "Inspect saved SAM3D mesh and baseline deformation dependencies without applying deformation or training.",
+  "selected_stage": null,
+  "selected_checkpoint": null,
+  "canonical_mesh_frame": null,
+  "mesh_to_deformation_coordinates": null,
+  "mesh_vertex_features": null,
+  "apply_appearance_compose_transforms": null,
+  "open_questions": [
+    "Geometry node versus full appearance node_delta checkpoint",
+    "Canonical mesh frame, GLB axes, scene transforms and canonical Gaussian coordinates",
+    "How mesh vertices obtain the learned Gaussian hyper-features used by the frozen node base",
+    "Whether appearance compose transforms belong in the transferred deformation or camera placement"
+  ]
+}
