@@ -2,9 +2,9 @@
 from . import artifacts as a
 
 ANIMALS={'rhino':'קרנף · Rhino','camel':'גמל · Camel','flamingo':'פלמינגו · Flamingo','cows':'פרה · Cows'}
-EXPERIMENTS={'baseline':'1 · LIFT4D baseline','2.1':'2.1 · Frozen mesh · final deformation','2.2':'2.2 · Frozen mesh · geometry deformation','2.3':'2.3 · Mesh fine-tuning','demo':'DEMO · Synthetic data'}
+EXPERIMENTS={'baseline':'1 · LIFT4D baseline','2.1':'2.1 · Frozen mesh · final deformation','2.2':'2.2 · Frozen mesh · geometry deformation','2.3':'2.3 · Mesh fine-tuning','2.4':'2.4 · Mesh ARAP projection','demo':'DEMO · Synthetic data'}
 STAGES={'node':'geometry','node_delta':'appearance','geometry':'geometry','appearance':'appearance','mesh_finetune':'mesh_finetune'}
-STAGE_LABELS={'geometry':'Geometry','appearance':'Appearance','mesh_finetune':'Fine-tuning'}
+STAGE_LABELS={'geometry':'Geometry','appearance':'Appearance','mesh_finetune':'Fine-tuning','arap':'ARAP · source'}
 
 
 def build(root, include_auxiliary=False):
@@ -19,7 +19,7 @@ def build(root, include_auxiliary=False):
                            or config.get('status')=='not_implemented')
             by_sequence={sequence:a.views(root/run_id,sequence) for sequence in detail['sequences']}
             # Unlaunched baseline stubs have an inventory but no produced artifacts.
-            has_producer=bool(list((root/run_id/'logs').glob('*geometry.log')) or (root/run_id/'logs/losses.jsonl').is_file())
+            has_producer=bool(list((root/run_id/'logs').glob('*geometry.log')) or (root/run_id/'logs/losses.jsonl').is_file() or (root/run_id/'logs/projection.jsonl').is_file())
             if not any(by_sequence.values()) and not has_producer:technical=True
             if technical and not include_auxiliary:
                 excluded.append(run_id);continue
@@ -61,7 +61,7 @@ def build(root, include_auxiliary=False):
                                     'experiment_label':EXPERIMENTS.get(experiment,experiment),'checkpoint':checkpoint,
                                     'checkpoint_label':checkpoint_label,'stage':stage,'iteration':iteration,
                                     'run':run_id,'view':chosen['id'],'kind':chosen['kind'],'complete':complete,
-                                    'created_utc':meta.get('created_utc'),'technical':technical,'demo':detail['demo'],
+                                    'created_utc':meta.get('created_utc'),'execution_label':meta.get('display_label'),'technical':technical,'demo':detail['demo'],
                                     'alternative_views':[v['id'] for v in candidates if v!=chosen]})
         except (OSError,ValueError,TypeError,KeyError) as error:
             issues.append({'run':run_id,'reason':str(error)})

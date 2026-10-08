@@ -47,7 +47,7 @@ async function selectCheckpoint(){
  const entries=catalog.filter(e=>e.animal===$('sequence').value&&e.experiment===$('experiment').value&&e.checkpoint===$('checkpoint').value);
  const executions=[...entries].sort((a,b)=>(b.created_utc||'').localeCompare(a.created_utc||'')||b.run.localeCompare(a.run));
  const old=$('run').value;
- choices($('run'),executions.map(e=>({id:e.run,label:(e.created_utc?new Date(e.created_utc).toLocaleString():'Execution')+' · '+e.run.split('/').at(-1)})),old);
+ choices($('run'),executions.map(e=>({id:e.run,label:e.execution_label||(e.created_utc?new Date(e.created_utc).toLocaleString():'Execution')+' · '+e.run.split('/').at(-1)})),old);
  $('runChoice').hidden=executions.length<=1;
  lastCheckpoint=$('checkpoint').value;lastExperiment=$('experiment').value;lastAnimal=$('sequence').value;
  await loadRun();
