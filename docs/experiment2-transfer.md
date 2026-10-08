@@ -65,12 +65,14 @@ triggers metrics; a partial manifest stays readable without claiming completion.
 ## SLURM email defaults
 
 All project SLURM scripts request `END,FAIL` mail to
-`nitzan.alt@campus.technion.ac.il`. The local account's `.bashrc` also exports
-`SBATCH_MAIL_USER` and `SBATCH_MAIL_TYPE` before its interactive-shell guard,
-so new shell sessions and ordinary future `sbatch` submissions use these defaults.
-Already-open shells need `source ~/.bashrc`; project scripts work immediately.
-Explicit `sbatch` flags can override defaults. A notification test job and the
-experiment job's `MailUser/MailType` were checked.
+`nitzan.alt@campus.technion.ac.il`. The local account also has a `~/.local/bin/sbatch` wrapper that supplies these
+options to `/usr/bin/sbatch`. `.bashrc` puts the wrapper on PATH before its
+interactive-shell guard. New SSH/shell sessions therefore use these defaults;
+already-open shells need `source ~/.bashrc`. Explicit later `sbatch` flags can
+override them. Direct invocation of `/usr/bin/sbatch` bypasses the wrapper, so
+project scripts retain explicit directives. SLURM 23.11 here does not honor the
+proposed `SBATCH_MAIL_USER/TYPE` environment variables; job-level mail fields are
+verified on the wrapper submission as well as the experiment scripts.
 
 ## Checks
 
