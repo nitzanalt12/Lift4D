@@ -37,9 +37,13 @@ complete files. Refresh rescans outputs and retains the selected run/view when p
 
 ## What current baseline artifacts support
 
-The inspected running baseline currently has input/mask inventories, metadata,
-configuration, logs and DA3 NPZ files, but has not yet saved comparison images.
-DA3 is not a rendered result and is never evaluated as one.
+Completed reconstruction comparisons are offered as a view-only video entry.
+The player shows the original encoded side-by-side result (input left, SAM3D
+render right), with native play/pause and time seeking. The adapter requires the
+exact `Comparison video saved: <absolute path>` log message printed after the
+encoder closes, plus the usual stable-file checks. HTTP byte ranges support
+seeking without transcoding or modifying the source. DA3 is not a rendered result
+and is never evaluated as one.
 
 The native training saver writes
 `models/davis_<sequence>_{node,node_delta}/comparison_iter_<iteration>/frame_<index>.png`.
@@ -54,8 +58,10 @@ The native comparison has no saved alpha and no explicit camera/timestamp export
 It can be viewed but alignment scores are unavailable. Orbit renders are novel
 views and are deliberately excluded. Reconstruction's `comparison.mp4` contains
 compressed RGB panels, no alpha, no per-video frame map, and can be padded by the
-encoder. It is not used for alignment evaluation. The current viewer uses saved
-frame images to make a synchronized player, rather than guessing MP4 frame maps.
+encoder. It is presented with an explicit view-only warning and is not used for alignment
+evaluation. The frame player remains available for saved per-frame images. MP4
+time seeking is distinct from verified input-frame navigation; the viewer does
+not guess MP4 frame maps, split padded panels, resize them, or infer alpha.
 No baseline exporter or training code was changed. For real alignment metrics,
 saved RGB/alpha plus trustworthy input-camera/frame metadata are still required;
 this dashboard cannot produce them from a Gaussian checkpoint.
@@ -184,9 +190,10 @@ Optional Chromium smoke test (server running with the demo and original run root
 PLAYWRIGHT_MODULE=/path/to/playwright CHROMIUM_EXECUTABLE=/path/to/chromium node dashboard/tests/browser.cjs
 ```
 
-The browser check covers a real partial rhino run, a synthetic run, intentionally
+The browser check covers a real completed rhino reconstruction video, a synthetic run, intentionally
 out-of-order image responses, synchronized decoded pixels, play/pause, refresh,
-overlay and worst-frame navigation. Python checks cover identity/empty masks,
+overlay, video play/pause/time seeking, switching back to frame mode and worst-frame
+navigation. Python checks cover identity/empty masks,
 known boundary displacement, target-only PSNR, alpha thresholds, missing alpha,
 LPIPS ROI preprocessing, frame/camera/time validation, strict dimensions,
 partial writes, native panel extraction and cache invalidation.

@@ -42,6 +42,36 @@ class Handler(BaseHTTPRequestHandler):
             run = a.inside(self.server.root,q['run'])
             if url.path=='/api/views':
                 return self.respond({'views':a.views(run,q['sequence'])})
+            if url.path=='/api/video':
+                view = next((v for v in a.views(run,q['sequence'])
+                             if v['id']==q.get('view') and v['kind']=='video'), None)
+                if not view:
+                    raise ValueError('Completed comparison video is not available')
+                data = a.stable_bytes(a.inside(run,view['id']))
+                # HTML video seeks use byte ranges; preserve source bytes exactly.
+                request_range = self.headers.get('Range')
+                if request_range:
+                    import re
+                    match = re.fullmatch(r'bytes=(\d*)-(\d*)',request_range)
+                    if not match or not any(match.groups()):
+                        raise ValueError('Invalid video byte range')
+                    first,last = match.groups()
+                    start = int(first) if first else max(0,len(data)-int(last))
+                    end = min(int(last),len(data)-1) if first and last else len(data)-1
+                    if start >= len(data) or end < start:
+                        self.send_response(416)
+                        self.send_header('Content-Range',f'bytes */{len(data)}')
+                        self.end_headers()
+                        return
+                    chunk=data[start:end+1]
+                    self.send_response(206)
+                    self.send_header('Content-Type','video/mp4')
+                    self.send_header('Accept-Ranges','bytes')
+                    self.send_header('Content-Range',f'bytes {start}-{end}/{len(data)}')
+                    self.send_header('Content-Length',str(len(chunk)))
+                    self.end_headers();self.wfile.write(chunk)
+                    return
+                return self.respond(data,'video/mp4')
             records, view, manifest = a.frame_index(run,q['sequence'],q.get('view'))
             if url.path=='/api/frames':
                 mask_values = []
