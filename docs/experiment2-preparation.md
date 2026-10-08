@@ -1,4 +1,7 @@
-# Experiment 2: preparation, without deformation transfer
+# Experiment 2: saved-artifact preparation
+
+This document records the initial preparation stage. The subsequently selected
+protocol and runnable variants 2.1/2.2 are in [experiment2-transfer.md](experiment2-transfer.md).
 
 This branch adds only saved-artifact readers and preparation records. It does not
 change the baseline, run SAM3D/LIFT4D inference, apply a learned warp to a mesh,

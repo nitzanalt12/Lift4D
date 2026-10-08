@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+#SBATCH --mail-user=nitzan.alt@campus.technion.ac.il
+#SBATCH --mail-type=END,FAIL
 #SBATCH --job-name=lift4d-baseline
 #SBATCH --partition=part-preempt
 #SBATCH --qos=qos-preempt
