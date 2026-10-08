@@ -1,4 +1,4 @@
-"""Experiment 2.6: independent raw 2.1 + ARAP + visible video foot handles."""
+"""Experiment 2.6: independent raw 2.1 + ARAP + visible video surface handles."""
 import argparse
 import datetime
 import hashlib
@@ -93,6 +93,8 @@ def main():
             'temporal_regularization':False,'interpolated_targets':False,'annotation_metric':'Reprojection on fitted observations; not independent evaluation',
             'selected_frame_ids':selected,'annotation_source':annotations['annotation_source'],'annotator':annotations['annotator'],
             'annotation_review_status':annotations.get('review_status','unspecified'),
+            'handle_count':len(definition['handles']),'handle_ids':[h['id'] for h in definition['handles']],
+            'binding_status':definition['binding_status'],
             'annotations_sha256':hashlib.sha256(annotation_bytes).hexdigest(),'definition_sha256':definition['sha256'],
             'checkpoint_hashes':definition['checkpoint_hashes'],'driver_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
             'solver_sha256':hashlib.sha256((ROOT/'experiment2/anchor_arap.py').read_bytes()).hexdigest(),
@@ -100,7 +102,7 @@ def main():
         atomic_json(out/'config.json',settings);atomic_json(out/'definition.json',definition);atomic_json(out/'annotations.json',annotations)
         atomic_json(out/'inventory.json',{definition['sequence']:context['inventory'][definition['sequence']]})
         atomic_json(out/'metadata.json',{'experiment':'2.6','selected_objects':[definition['sequence']],
-            'display_label':f'ARAP {args.arap_strength:g} · '+('control, no video anchors' if weight==0 else f'video anchors {weight:g}')+f' · leg prior {args.leg_prior_weight:g}',
+            'display_label':f'ARAP {args.arap_strength:g} · '+('control, no video anchors' if weight==0 else f'video anchors {weight:g}')+f' · leg prior {args.leg_prior_weight:g} · {len(definition["handles"])} handles',
             'commit':subprocess.check_output(['git','-C',str(ROOT),'rev-parse','HEAD'],text=True).strip(),
             'created_utc':datetime.datetime.now(datetime.timezone.utc).isoformat()})
         manifest={'schema':1,'sequence':definition['sequence'],'stage':'video_anchors','checkpoint':30000,'target_object_id':255,

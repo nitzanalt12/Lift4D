@@ -3,6 +3,7 @@ import numpy as np
 from experiment2.anchor_arap import VideoAnchorARAP
 from experiment2.arap import ARAP
 from experiment2.video_anchors import project,validate_annotations
+from experiment2.extend_video_handles import surface_binding
 
 
 class VideoAnchorChecks(unittest.TestCase):
@@ -46,6 +47,14 @@ class VideoAnchorChecks(unittest.TestCase):
         energy=solver.energies(displaced,self.rest)
         self.assertAlmostEqual(energy['anchor'],.001/(len(self.rest)*solver.scale**2))
         with self.assertRaises(ValueError):VideoAnchorARAP(self.rest,self.faces,100,self.handles,prior_weights=np.zeros(5))
+    def test_surface_binding_stays_in_explicit_leg_and_records_pixel_projection(self):
+        frame={'camera':self.camera,'linear':self.linear,'translation':self.translation}
+        labels=np.array([2,3,3,3,2]);xy=project(self.rest[[0]],self.linear,self.translation,self.camera)[0]
+        vertex,pixel=surface_binding(self.rest,labels,2,xy,frame)
+        self.assertEqual(vertex,0);np.testing.assert_allclose(pixel,xy)
+        with self.assertRaises(ValueError):surface_binding(self.rest,labels,4,xy,frame)
+        with self.assertRaises(ValueError):surface_binding(self.rest,labels,1,xy,frame)
+        with self.assertRaises(ValueError):surface_binding(self.rest,labels,2,[-1,10],frame)
 
 
 if __name__=='__main__':unittest.main()

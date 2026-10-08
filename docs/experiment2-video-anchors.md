@@ -21,10 +21,18 @@ marked **assistant-draft**. Identity was inspected through original frames
 0 / 10 / 20 / 30 and first-frame canonical projections. There are 11 visible
 observations; far hind sole in frame 0 is partly occluded and has no target.
 Confidence is 0.7–0.9. These pixel coordinates are not automatic tracker output,
-ground-truth joint locations or subpixel measurements. No uncertain knee
-binding or knee observation is guessed in this first foot-only pilot.
+ground-truth joint locations or subpixel measurements. The first pilot has
+feet only. A separate six-handle draft adds two visible **surface bends** on the
+near front/hind legs. These are fixed surface vertices, not skeletal joint
+centers. First-frame manual pixels choose the nearest projection in the explicit
+canonical leg, using the frontmost surface within 1.5px of the minimum distance.
+Bindings farther than 15px from the reference are rejected. Single-view depth
+remains uncertain; all coordinates, vertex IDs and the selection rule are saved.
+Only visibly identified bends are added; hidden far-leg joints are not guessed.
+Inspect this draft at
+`/video-anchors?definition=video_anchors/camel-bends-20261009`.
 
-Choose frame / fixed handle, click the visible sole center, set confidence and
+Choose frame / fixed handle, click the visible sole or named surface bend, set confidence and
 explicitly confirm its identity. **Hidden / uncertain** removes the target.
 Clicks are converted from display coordinates to original image pixels without
 resizing input data. Identity confirmation is not inferred from a click. Saving
@@ -106,6 +114,22 @@ Prepare job 102393: `runs/video_anchors/camel-20261009`. Initial unit-prior job
 Weak-leg-prior job 102395:
 `runs/sam3d_mesh_video_anchors/camel-soft-leg-prior-20261009`.
 Each contains separate `camel-2.6-anchors-0` / `camel-2.6-anchors-10` outputs.
+
+To add explicitly annotated surface bends without replacing a definition:
+
+```bash
+python -m experiment2.extend_video_handles \
+  --definition runs/video_anchors/camel-20261009/definition.json \
+  --annotations runs/video_anchors/camel-20261009/annotations-assistant-draft.json \
+  --landmarks runs/video_anchors/camel-20261009/manual-bend-landmarks-draft.json \
+  --output runs/video_anchors/camel-bends-new
+```
+
+The manual landmark JSON contains annotator/source and handle records with ID,
+label, color, explicit canonical leg region, first-frame native reference pixels
+and per-frame visibility / identity / confidence / native pixels. The command
+reads saved geometry only. It writes a new definition and draft annotations;
+it does not infer landmark observations or train a detector.
 
 Dashboard: camel → **2.6** → source 30000, then select executions distinguished
 by video weight and leg prior. They are **partial 3-frame pilots**, not complete

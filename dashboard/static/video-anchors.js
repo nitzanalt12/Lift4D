@@ -22,10 +22,10 @@ function draw(){
   [h.label,r?.xy?r.xy.map(x=>x.toFixed(1)).join(', '):'Not available',r?.visible?'Visible':'Hidden / uncertain',r?.visible?String(r.confidence):'—',r?.identity_verified?'Yes':'No'].forEach(text=>{const td=document.createElement('td');td.textContent=text;tr.append(td)});
   tr.style.color=h.color;tr.onclick=()=>{$('handle').value=h.id;selectHandle()};$('rows').append(tr);
  }
- $('status').textContent=`${prepared.sequence} · ${f.id} · original ${canvas.width} × ${canvas.height} pixels · fixed foot patch identities`;
+ $('status').textContent=`${prepared.sequence} · ${f.id} · original ${canvas.width} × ${canvas.height} pixels · fixed surface handle identities`;
  canvas.dataset.frame=f.id;canvas.dataset.ready='true';
 }
-function selectHandle(){const r=ensure();$('identity').checked=r.identity_verified===true;$('confidence').value=r.confidence||.8;draw()}
+function selectHandle(){const r=ensure();$('identity').checked=r.identity_verified===true;$('confidence').value=r.confidence||.8;$('caption').textContent='Click the visible '+handle().label+' in the original frame. Surface attachment and identity require review.';draw()}
 async function frame(){
  const n=++token,f=current();loadedFrame=null;$('inputCanvas').dataset.ready='false';
  const r=await fetch('/api/video-anchor-image?'+new URLSearchParams({definition:definitionId,frame:f.id}));if(!r.ok)throw Error(await r.text());
@@ -62,4 +62,4 @@ $('save').onclick=safe(async()=>{
  const saved=await json('/api/video-annotations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({definition:definitionId,annotations:result})});
  $('savedPath').textContent=saved.absolute_path+'\n'+saved.note;
 });
-safe(async()=>{const list=await json('/api/video-anchor-definitions');if(!list.definitions.length)throw Error('No prepared handle definitions');$('definition').replaceChildren(...list.definitions.map(d=>new Option(d.sequence+' · '+d.id,d.id)));await load()})();
+safe(async()=>{const list=await json('/api/video-anchor-definitions');if(!list.definitions.length)throw Error('No prepared handle definitions');$('definition').replaceChildren(...list.definitions.map(d=>new Option(d.sequence+' · '+d.id,d.id)));const requested=new URLSearchParams(location.search).get('definition');if(requested&&list.definitions.some(d=>d.id===requested))$('definition').value=requested;await load()})();
