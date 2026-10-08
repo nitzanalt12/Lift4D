@@ -60,7 +60,7 @@ def build(root, include_auxiliary=False):
                     checkpoint_label=f'{label} · {iteration:,}' if iteration is not None else ('Not available · No saved render' if chosen['kind']=='missing' else 'Saved render · checkpoint ID unavailable')
                     if complete is False:checkpoint_label+=' · partial'
                     if iteration is not None and chosen['kind']=='missing':checkpoint_label+=' · renders unavailable'
-                    if experiment=='2.6' and config.get('annotation_review_status','').startswith('assistant-draft'):
+                    if experiment=='2.6' and 'draft' in config.get('annotation_review_status','').lower():
                         checkpoint_label+=' · draft anchors'
                     execution_label=meta.get('display_label')
                     if experiment=='2.6' and execution_label and 'leg prior' not in execution_label:

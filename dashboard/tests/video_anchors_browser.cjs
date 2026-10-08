@@ -4,9 +4,16 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE,args:['--no-sandbox']});
  const page=await browser.newPage({viewport:{width:1200,height:1000}});page.setDefaultTimeout(120000);
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
- await page.goto((process.env.DASHBOARD_URL||'http://127.0.0.1:8766')+'/video-anchors');
+ const definition=process.env.ANCHOR_DEFINITION;
+ await page.goto((process.env.DASHBOARD_URL||'http://127.0.0.1:8766')+'/video-anchors'+(definition?'?definition='+encodeURIComponent(definition):''));
  await page.waitForFunction(()=>document.querySelector('#inputCanvas').dataset.ready==='true');
  assert.match(await page.locator('#draft').innerText(),/assistant-draft/);
+ if(definition){
+  assert.equal(await page.locator('#definition').inputValue(),definition);
+  await page.selectOption('#handle','bend-hind-near');
+  assert.match(await page.locator('#caption').innerText(),/surface|bend/);
+  assert.equal(await page.locator('#handle option').count(),6);
+ }
  await page.selectOption('#handle','foot-5');assert.equal(await page.locator('#identity').isChecked(),false);
  const canvas=page.locator('#inputCanvas'),box=await canvas.boundingBox();const target=[302.5,420.25];
  await page.mouse.click(box.x+box.width*target[0]/854,box.y+box.height*target[1]/480);

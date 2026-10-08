@@ -72,6 +72,10 @@ class CatalogTests(unittest.TestCase):
         entry=build(self.root)['entries'][0]
         self.assertEqual(entry['checkpoint'],'video_anchors:30000')
         self.assertIn('partial',entry['checkpoint_label']);self.assertIn('draft anchors',entry['checkpoint_label'])
+        self.write(run/'config.json',{'experiment':'2.6','source_checkpoint':30000,'annotation_review_status':'manual-edit-draft'})
+        self.assertIn('draft anchors',build(self.root)['entries'][0]['checkpoint_label'])
+        self.write(run/'config.json',{'experiment':'2.6','source_checkpoint':30000,'annotation_review_status':'user-reviewed'})
+        self.assertNotIn('draft anchors',build(self.root)['entries'][0]['checkpoint_label'])
 
     def test_finetune_checkpoint_without_render_is_selectable(self):
         run=self.make_run('trained','2.3');self.manifest(run,'mesh_finetune',1000)

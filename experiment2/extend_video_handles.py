@@ -99,7 +99,7 @@ def main():
     annotations['definition_sha256'] = result['sha256']
     annotations['parent_annotation_source'] = annotations['annotation_source']
     annotations['annotation_source'] += '; ' + manual['annotation_source']
-    annotations['review_status'] = 'assistant-draft; surface identity and depth attachment require review; not ground truth'
+    annotations['review_status'] = manual.get('review_status', 'manual-surface-binding-draft; surface identity and depth attachment require review')
     annotations['observations'].extend(added_rows)
     validate_annotations(annotations, result)
     out = Path(args.output).resolve()
