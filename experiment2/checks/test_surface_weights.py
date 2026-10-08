@@ -1,6 +1,7 @@
 import unittest
 import numpy as np
 from experiment2.surface_weights import surface_weights
+from experiment2.surface_transfer import validated_weights
 
 
 class SurfaceWeightChecks(unittest.TestCase):
@@ -28,6 +29,17 @@ class SurfaceWeightChecks(unittest.TestCase):
         unavailable=surface_weights(vertices,faces,vertices[[0]],np.ones(1),k=1,allow_unattached=True)
         np.testing.assert_array_equal(unavailable['unattached_vertices'],[3,4,5])
         np.testing.assert_array_equal(unavailable['weights'][3:],0)
+
+    def test_explicit_unattached_policy_preserves_original_mapping_only_there(self):
+        mapping={'surface_indices':np.array([[1,2],[0,0]]),'surface_weights':np.array([[.7,.3],[0.,0.]]),
+                 'unattached_vertices':np.array([1]),'original_indices':np.array([[0,1],[2,1]]),
+                 'original_weights':np.array([[.2,.8],[.4,.6]])}
+        indices,weights,missing=validated_weights(mapping,3,2)
+        np.testing.assert_array_equal(indices,[[1,2],[2,1]])
+        np.testing.assert_allclose(weights,[[.7,.3],[.4,.6]])
+        np.testing.assert_array_equal(mapping['surface_weights'][1],[0,0])
+        mapping['surface_weights'][0]=[.7,.7]
+        with self.assertRaises(ValueError):validated_weights(mapping,3,2)
 
 
 if __name__=='__main__':unittest.main()

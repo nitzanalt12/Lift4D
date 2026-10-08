@@ -2,9 +2,9 @@
 from . import artifacts as a
 
 ANIMALS={'rhino':'קרנף · Rhino','camel':'גמל · Camel','flamingo':'פלמינגו · Flamingo','cows':'פרה · Cows'}
-EXPERIMENTS={'baseline':'1 · LIFT4D baseline','2.1':'2.1 · Frozen mesh · final deformation','2.2':'2.2 · Frozen mesh · geometry deformation','2.3':'2.3 · Mesh fine-tuning','2.4':'2.4 · Mesh ARAP projection','demo':'DEMO · Synthetic data'}
+EXPERIMENTS={'baseline':'1 · LIFT4D baseline','2.1':'2.1 · Frozen mesh · final deformation','2.2':'2.2 · Frozen mesh · geometry deformation','2.3':'2.3 · Mesh fine-tuning','2.4':'2.4 · Mesh ARAP projection','2.5':'2.5 · Surface-aware frozen mesh','demo':'DEMO · Synthetic data'}
 STAGES={'node':'geometry','node_delta':'appearance','geometry':'geometry','appearance':'appearance','mesh_finetune':'mesh_finetune'}
-STAGE_LABELS={'geometry':'Geometry','appearance':'Appearance','mesh_finetune':'Fine-tuning','arap':'ARAP · source'}
+STAGE_LABELS={'geometry':'Geometry','appearance':'Appearance','mesh_finetune':'Fine-tuning','arap':'ARAP · source','surface_transfer':'Surface weights · source'}
 
 
 def build(root, include_auxiliary=False):
@@ -19,7 +19,7 @@ def build(root, include_auxiliary=False):
                            or config.get('status')=='not_implemented')
             by_sequence={sequence:a.views(root/run_id,sequence) for sequence in detail['sequences']}
             # Unlaunched baseline stubs have an inventory but no produced artifacts.
-            has_producer=bool(list((root/run_id/'logs').glob('*geometry.log')) or (root/run_id/'logs/losses.jsonl').is_file() or (root/run_id/'logs/projection.jsonl').is_file())
+            has_producer=bool(list((root/run_id/'logs').glob('*geometry.log')) or (root/run_id/'logs/losses.jsonl').is_file() or (root/run_id/'logs/projection.jsonl').is_file() or (root/run_id/'logs/transfer.jsonl').is_file())
             if not any(by_sequence.values()) and not has_producer:technical=True
             if technical and not include_auxiliary:
                 excluded.append(run_id);continue
@@ -43,7 +43,8 @@ def build(root, include_auxiliary=False):
                         if time.time()-checkpoint_file.stat().st_mtime<2:continue
                         groups.setdefault(('mesh_finetune',step),[{'id':'','kind':'missing','label':'Saved checkpoint; renders unavailable'}])
                 if not groups:
-                    pending=('arap',int(config['source_checkpoint'])) if experiment=='2.4' and config.get('source_checkpoint') else ('pending',None)
+                    source_stage={'2.4':'arap','2.5':'surface_transfer'}.get(experiment)
+                    pending=(source_stage,int(config['source_checkpoint'])) if source_stage and config.get('source_checkpoint') else ('pending',None)
                     groups[pending]=[{'id':'','kind':'missing','label':'No settled saved render yet'}]
                 for (stage,iteration),candidates in groups.items():
                     def preference(view):

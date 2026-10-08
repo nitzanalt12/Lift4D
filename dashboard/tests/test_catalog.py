@@ -57,6 +57,15 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(entry['execution_label'],'ARAP λ=10')
         self.assertEqual(entry['kind'],'missing')
 
+    def test_surface_transfer_partial_run_keeps_source_checkpoint_identity(self):
+        run=self.make_run('surface-active','2.5')
+        self.write(run/'config.json',{'experiment':'2.5','source_checkpoint':30000})
+        (run/'logs').mkdir();(run/'logs/transfer.jsonl').write_text('in progress')
+        entry=build(self.root)['entries'][0]
+        self.assertEqual(entry['checkpoint'],'surface_transfer:30000')
+        self.assertIn('Surface-aware',entry['experiment_label'])
+        self.assertEqual(entry['kind'],'missing')
+
     def test_finetune_checkpoint_without_render_is_selectable(self):
         run=self.make_run('trained','2.3');self.manifest(run,'mesh_finetune',1000)
         checkpoint=run/'checkpoints/delta-000250.pt';checkpoint.parent.mkdir();checkpoint.write_bytes(b'atomic fixture')

@@ -42,7 +42,7 @@ def create(root):
         config=a.read_json(run/'config.json')
         checkpoint_path=None
         if entry['experiment']=='2.3':checkpoint_path=run/'checkpoints'/f"delta-{entry['iteration']:06d}.pt" if entry['iteration'] is not None else None
-        elif entry['iteration'] is not None and entry['stage'] in ['geometry','appearance','arap']:
+        elif entry['iteration'] is not None and entry['stage'] in ['geometry','appearance','arap','surface_transfer']:
             baseline=Path(config.get('baseline_run',run)).resolve()
             prefix='node' if entry['stage']=='geometry' else 'node_delta'
             checkpoint_path=baseline/'models'/f"davis_{entry['animal']}_{prefix}"/'deform_gs'/f"iteration_{entry['iteration']}"
