@@ -39,6 +39,13 @@ class VideoAnchorChecks(unittest.TestCase):
         with self.assertRaises(ValueError):validate_annotations(data,definition)
         data['observations'][0]['identity_verified']=True
         self.assertEqual(list(validate_annotations(data,definition)),['00000'])
+    def test_weighted_prior_uses_recorded_confidence_and_rejects_nonpositive_weights(self):
+        prior=np.array([.001,.001,1,1,1])
+        solver=VideoAnchorARAP(self.rest,self.faces,100,self.handles,prior_weights=prior)
+        displaced=self.rest.copy();displaced[0,0]+=1
+        energy=solver.energies(displaced,self.rest)
+        self.assertAlmostEqual(energy['anchor'],.001/(len(self.rest)*solver.scale**2))
+        with self.assertRaises(ValueError):VideoAnchorARAP(self.rest,self.faces,100,self.handles,prior_weights=np.zeros(5))
 
 
 if __name__=='__main__':unittest.main()

@@ -13,6 +13,7 @@ from PIL import Image
 from .anchor_arap import VideoAnchorARAP
 from .arap import distortion
 from .video_anchors import validate_annotations,project
+from .leg_audit import leg_cores
 from .transfer import ROOT,load_transfer,render_mesh
 from .mesh import snapshot
 from evaluation.export_input_views import atomic_json
@@ -24,7 +25,9 @@ def main():
     p.add_argument('--definition',required=True);p.add_argument('--annotations',required=True)
     p.add_argument('--output-root',required=True);p.add_argument('--arap-strength',type=float,default=100)
     p.add_argument('--keypoint-weights',type=float,nargs='+',default=[0,10]);p.add_argument('--iterations',type=int,default=150)
+    p.add_argument('--leg-prior-weight',type=float,default=1.,help='Raw-motion prior weight in canonical lower-leg cores; body/unclassified stay 1')
     args=p.parse_args()
+    if not 0<args.leg_prior_weight<=1:raise ValueError('Leg prior weight must be in (0,1]')
     definition_bytes=snapshot(Path(args.definition));definition=json.loads(definition_bytes)
     payload={k:v for k,v in definition.items() if k!='sha256'}
     if hashlib.sha256(json.dumps(payload,sort_keys=True,allow_nan=False).encode()).hexdigest()!=definition['sha256']:raise ValueError('Definition digest mismatch')
@@ -73,14 +76,17 @@ def main():
             with Image.open(seed/rows[fid]['rgb']) as image:reference=np.asarray(image.convert('RGB'),dtype=np.int16)
             if np.abs(np.round(rgba[:,:,:3]*255).astype(np.int16)-reference).max()>1:raise ValueError('Original render reproduction failed')
     root.mkdir(parents=True,exist_ok=True)
-    solver=VideoAnchorARAP(rest,faces,args.arap_strength,definition['handles'],device='cuda')
+    leg_labels,_=leg_cores(rest,faces,definition['partition']['z_cutoff'])
+    prior_weights=np.where(leg_labels>=2,args.leg_prior_weight,1.)
+    solver=VideoAnchorARAP(rest,faces,args.arap_strength,definition['handles'],device='cuda',prior_weights=prior_weights)
     for weight in args.keypoint_weights:
         out=root/f'{definition["sequence"]}-2.6-anchors-{weight:g}';out.mkdir(exist_ok=False)
         for folder in ['rgb','alpha','mesh','logs','dashboard_exports']:(out/folder).mkdir()
         np.savez(out/'mesh/canonical.npz',**canonical)
         settings={'experiment':'2.6','sequence':definition['sequence'],'baseline_run':str(baseline),'seed_run':str(seed),
             'source_checkpoint':30000,'arap_strength':args.arap_strength,'keypoint_weight':weight,'iterations':args.iterations,
-            'objective':'Original mean soft raw-target error + ARAP strength * mean symmetric edge ARAP / canonical D²; plus keypoint_weight * confidence-weighted mean 2D reprojection squared error / image diagonal²',
+            'objective':'Mean per-vertex prior_weight * soft raw-target error + ARAP strength * mean symmetric edge ARAP / canonical D²; plus keypoint_weight * confidence-weighted mean 2D reprojection squared error / image diagonal²',
+            'leg_prior_weight':args.leg_prior_weight,'body_prior_weight':1.,'prior_partition':definition['partition'],
             'solver':'Original local/global ARAP; fixed-camera Gauss-Newton handle reprojection; Woodbury small system; exact full-energy backtracking',
             'initialization':'Raw original 2.1 separately for every annotated frame, not 2.3/2.4/2.5',
             'network_training':False,'network_forward':False,'vertex_optimization':True,'camera_alignment':False,
@@ -94,7 +100,7 @@ def main():
         atomic_json(out/'config.json',settings);atomic_json(out/'definition.json',definition);atomic_json(out/'annotations.json',annotations)
         atomic_json(out/'inventory.json',{definition['sequence']:context['inventory'][definition['sequence']]})
         atomic_json(out/'metadata.json',{'experiment':'2.6','selected_objects':[definition['sequence']],
-            'display_label':f'ARAP {args.arap_strength:g} · '+('control, no video anchors' if weight==0 else f'video anchors {weight:g}'),
+            'display_label':f'ARAP {args.arap_strength:g} · '+('control, no video anchors' if weight==0 else f'video anchors {weight:g}')+f' · leg prior {args.leg_prior_weight:g}',
             'commit':subprocess.check_output(['git','-C',str(ROOT),'rev-parse','HEAD'],text=True).strip(),
             'created_utc':datetime.datetime.now(datetime.timezone.utc).isoformat()})
         manifest={'schema':1,'sequence':definition['sequence'],'stage':'video_anchors','checkpoint':30000,'target_object_id':255,
@@ -116,9 +122,12 @@ def main():
                 log.write(json.dumps(record)+'\n');log.flush()
                 print(f'anchors={weight:g} {fid} {record["seconds"]:.1f}s: fit error {report["initial"]["reprojection_mean_px"]:.2f} -> {report["final"]["reprojection_mean_px"]:.2f}px',flush=True)
         manifest['complete']=len(selected)==len(context['stems']);manifest['selected_frames_completed']=True
+        for name,module in [('deform_node_base.pth',gui.deform_node_base.deform),('deform.pth',gui.deform.deform)]:
+            current=module.state_dict();saved=context['bundle']['states'][name]
+            if set(current)!=set(saved) or any(not torch.equal(current[k].cpu(),saved[k]) for k in saved):raise ValueError('Learned state changed')
         atomic_json(out/'dashboard_exports/mesh.json',manifest)
         atomic_json(out/'projection-status.json',{'complete':True,'frames':len(selected),'all_input_frames':manifest['complete'],
-            'network_training':False,'annotation_status':annotations.get('review_status','unspecified')})
+            'network_training':False,'learned_state_bitwise_unchanged':True,'annotation_status':annotations.get('review_status','unspecified')})
 
 
 if __name__=='__main__':main()

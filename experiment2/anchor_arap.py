@@ -6,13 +6,20 @@ scalar sparse factorization. No network gradients or optimizer are involved.
 """
 import numpy as np
 from scipy import sparse
+from scipy.sparse.linalg import splu
 from .arap import ARAP
 from .video_anchors import project
 
 
 class VideoAnchorARAP(ARAP):
-    def __init__(self,rest,faces,strength,handles,device='cpu'):
+    def __init__(self,rest,faces,strength,handles,device='cpu',prior_weights=None):
         super().__init__(rest,faces,strength,device)
+        self.prior_weights=np.ones(len(rest)) if prior_weights is None else np.asarray(prior_weights,dtype=float)
+        if self.prior_weights.shape!=(len(rest),) or not np.isfinite(self.prior_weights).all() or np.any(self.prior_weights<=0):raise ValueError('Finite positive per-vertex raw-prior weights required')
+        if not np.all(self.prior_weights==1):
+            i,j=self.edges.T;row=np.r_[i,j,i,j];col=np.r_[i,j,j,i];val=np.r_[np.ones(len(i)*2),-np.ones(len(i)*2)]
+            laplacian=sparse.coo_matrix((val,(row,col)),shape=(len(rest),len(rest))).tocsc()
+            self.factor=splu(sparse.diags(self.prior_weights,format='csc')+self.coefficient*laplacian)
         self.handles=handles;rows=[];cols=[];values=[]
         if len({h['id'] for h in handles})!=len(handles):raise ValueError('Duplicate handle ID')
         for i,h in enumerate(handles):
@@ -24,6 +31,12 @@ class VideoAnchorARAP(ARAP):
         self.H=sparse.csr_matrix((values,(rows,cols)),shape=(len(handles),len(rest)))
         self.basis=self.factor.solve(self.H.T.toarray())
         self.gram=np.asarray(self.H@self.basis)
+
+    def energies(self,vertices,target,rotations=None):
+        result=super().energies(vertices,target,rotations)
+        weighted=float(np.mean(self.prior_weights*np.square(np.asarray(vertices)-target).sum(1)))/self.scale**2
+        result['total']+=weighted-result['anchor'];result['anchor']=weighted
+        return result
 
     def solve_anchored(self,target,observations,linear,translation,camera,keypoint_weight=10,iterations=150,tolerance=1e-5):
         import torch
@@ -51,7 +64,7 @@ class VideoAnchorARAP(ARAP):
             initial=evaluate(vertices);current=initial
             for step in range(iterations):
                 rotations=self.rotations(vertices)
-                candidate=self.factor.solve(target+self.coefficient*self.rhs(rotations))
+                candidate=self.factor.solve(self.prior_weights[:,None]*target+self.coefficient*self.rhs(rotations))
                 if keypoint_weight:
                     handle_positions=H@vertices
                     pixels,jacobian=project(handle_positions,linear,translation,camera,jacobian=True)
