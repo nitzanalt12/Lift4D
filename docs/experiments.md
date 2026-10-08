@@ -255,3 +255,20 @@ sbatch --account=acct-ykasten --partition=part-preempt-classB \
 
 Reports and resolved package versions are under `runs/setup/` (ignored by Git).
 No LIFT4D inference, training or full model instantiation was executed.
+
+### Four DAVIS animals
+
+`experiments/configs/baseline-animals.json` uses the unchanged baseline recipe
+with the fixed `davis-animals-v1` subset: rhino (90 frames), camel (90),
+flamingo (80), and cows (104). All frames and supplied masks are used.
+Prepare each object independently while retaining the shared subset snapshot:
+
+```bash
+python scripts/experiment.py prepare --config experiments/configs/baseline-animals.json --object rhino --run-id animals-rhino
+sbatch --account=acct-ykasten --partition=part-preempt-classB --qos=qos-preempt --gres=gpu:A6000:1 --output=runs/baseline/animals-rhino/logs/slurm-%j.log scripts/slurm/run.sh runs/baseline/animals-rhino
+```
+
+Repeat with camel, flamingo, and cows, using distinct run IDs. Each allocation
+runs reconstruction, geometry training, then appearance training in sequence.
+The `--object` option selects execution only; the shared manifest and its hash
+remain recorded unchanged. Run directories cannot be reused accidentally.

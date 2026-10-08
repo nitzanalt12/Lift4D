@@ -34,12 +34,16 @@ def main():
     parser.add_argument('--config', default='experiments/configs/baseline.json')
     parser.add_argument('--paths', default='experiments/paths.local.json')
     parser.add_argument('--run-id')
+    parser.add_argument('--object',
+                        help='Run one object from the shared subset')
     args = parser.parse_args()
     config = read(resolve(args.config))
     paths = read(resolve(args.paths))
     if not re.fullmatch(r'[A-Za-z0-9_-]+', config['id']):
         raise ValueError('Invalid experiment id')
     subset = read(resolve(config['subset']))
+    if args.object and args.object not in subset['objects']:
+        raise ValueError('Requested object is not in the configured subset')
     upstream = read(ROOT / 'experiments/upstream.json')
     git('merge-base', '--is-ancestor', upstream['commit'], 'HEAD')
     for key in ['data_root', 'davis_root', 'sam3d_weights', 'zero123_dir', 'runs_root']:
@@ -86,6 +90,8 @@ def main():
         if config['id'] != 'baseline':
             raise ValueError('Only original baseline commands are implemented')
         for name, stems in subset['objects'].items():
+            if args.object and name != args.object:
+                continue
             common = ['--dataset', 'davis', '--object_name', name]
             reconstruct = [paths['python'], '-u', 'run_inference.py', *common,
                            '--model_tag', paths['sam3d_weights'], '--sam3d_out', str(run / 'sam3d'),
@@ -100,6 +106,7 @@ def main():
     metadata = {'created_utc': now.isoformat(), 'commit': git('rev-parse', 'HEAD'),
                 'branch': git('branch', '--show-current'), 'upstream': upstream,
                 'git_status': git('status', '--porcelain'), 'python_preparer': sys.version,
+                'selected_objects': [args.object] if args.object else list(subset['objects']),
                 'subset_sha256': hashlib.sha256(resolve(config['subset']).read_bytes()).hexdigest()}
     for filename, value in [('config.json', config), ('paths.json', paths), ('subset.json', subset),
                             ('inventory.json', inventory), ('metadata.json', metadata),
