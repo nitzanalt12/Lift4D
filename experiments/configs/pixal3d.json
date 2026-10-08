@@ -1,0 +1,12 @@
+{
+  "id": "pixal3d",
+  "status": "not_implemented",
+  "base": "original-lift4d",
+  "subset": "experiments/subsets/davis-v1.json",
+  "training_reference": "experiments/configs/baseline.json",
+  "description": "Replace only the reconstruction source with Pixal3D and train the same baseline deformation network with the same settings.",
+  "open_questions": [
+    "Pixal3D to Gaussian interface",
+    "Coordinate, scale, pose and frame correspondence"
+  ]
+}

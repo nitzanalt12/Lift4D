@@ -41,3 +41,15 @@ tests/
 
 # demo videos (download separately)
 *.mp4
+
+# Experiment infrastructure: machine paths and generated artifacts
+/experiments/paths.local.json
+/runs/
+/weights/
+/checkpoints/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.ply
+*.glb

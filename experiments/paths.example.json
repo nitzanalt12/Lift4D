@@ -1,0 +1,8 @@
+{
+  "data_root": "data",
+  "davis_root": "data/DAVIS",
+  "sam3d_weights": "sam3d/checkpoints/hf",
+  "zero123_dir": "lift4d_scgs/extern/ldm_zero123",
+  "runs_root": "runs",
+  "python": "python"
+}

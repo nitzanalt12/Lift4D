@@ -1,0 +1,12 @@
+{
+  "id": "sam3d_mesh",
+  "status": "not_implemented",
+  "base": "original-lift4d",
+  "subset": "experiments/subsets/davis-v1.json",
+  "training_reference": "experiments/configs/baseline.json",
+  "description": "Apply the original baseline trained deformation to a SAM3D mesh, without additional training.",
+  "open_questions": [
+    "Mesh coordinates and canonical frame alignment",
+    "Which saved baseline deformation components apply to mesh vertices"
+  ]
+}

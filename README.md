@@ -268,3 +268,8 @@ If you find this work useful, please cite:
 ## Acknowledgements
 
 This project builds on [SAM 3D Objects](https://github.com/facebookresearch/sam-3d-objects) and [SC-GS](https://github.com/yihua7/SC-GS). Many thanks!
+
+## Experiment infrastructure
+
+See [minimal experiment setup and commands](docs/experiments.md) for the pinned
+upstream commit, fixed DAVIS subset, configurable paths and isolated run records.
