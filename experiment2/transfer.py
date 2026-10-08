@@ -40,13 +40,8 @@ def render_mesh(vertices, faces, colors, camera, context):
     return rgba[0].flip(0).clamp(0,1)
 
 
-def main():
-    p=argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--run',required=True);p.add_argument('--sequence',required=True)
-    p.add_argument('--variant',choices=['2.1','2.2'],required=True)
-    p.add_argument('--output',required=True)
-    args=p.parse_args();run=Path(args.run).resolve();out=Path(args.output).resolve();sequence=args.sequence
-    stage,iteration=('appearance',30000) if args.variant=='2.1' else ('geometry',20000)
+def load_transfer(run,sequence,stage,iteration):
+    """Restore the exact saved transfer context; no forward pass or optimizer."""
     bundle=load_bundle(run,sequence,stage,iteration)
     inventory=json.loads(snapshot(run/'inventory.json'));stems=inventory[sequence]['frames']
     if stems!=[f'{i:05d}' for i in range(len(stems))]:raise ValueError('Input frame IDs must be contiguous from zero')
@@ -96,6 +91,32 @@ def main():
     # Minimal adapter lets the exact original no-grad helper evaluate vertices.
     from types import SimpleNamespace
     gui.gaussians=SimpleNamespace(get_xyz=torch.from_numpy(vertices).cuda(),feature=torch.from_numpy(features).cuda())
+    return {key: value for key, value in locals().items() if key in ['gui', 'stems', 'inventory', 'bundle', 'cfg', 'window', 'meshbytes', 'vertices', 'faces', 'colors', 'indices', 'distances', 'features']}
+
+
+def main():
+    p=argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--run',required=True);p.add_argument('--sequence',required=True)
+    p.add_argument('--variant',choices=['2.1','2.2'],required=True)
+    p.add_argument('--output',required=True)
+    args=p.parse_args();run=Path(args.run).resolve();out=Path(args.output).resolve();sequence=args.sequence
+    stage,iteration=('appearance',30000) if args.variant=='2.1' else ('geometry',20000)
+    state=load_transfer(run,sequence,stage,iteration)
+    import torch
+    import nvdiffrast.torch as dr
+    gui=state['gui']
+    stems=state['stems']
+    inventory=state['inventory']
+    bundle=state['bundle']
+    cfg=state['cfg']
+    window=state['window']
+    meshbytes=state['meshbytes']
+    vertices=state['vertices']
+    faces=state['faces']
+    colors=state['colors']
+    indices=state['indices']
+    distances=state['distances']
+    features=state['features']
     if out==run or out.is_relative_to(run):raise ValueError('Experiment outputs must be separate from source baseline')
     out.mkdir(parents=True,exist_ok=False)
     for directory in ['mesh','rgb','alpha','dashboard_exports']:(out/directory).mkdir()
