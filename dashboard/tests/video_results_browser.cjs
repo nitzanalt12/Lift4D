@@ -5,15 +5,26 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
  const page=await browser.newPage({viewport:{width:1600,height:1050}});page.setDefaultTimeout(120000);
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  const base='sam3d_mesh_video_anchors/camel-bends-20261009/camel-2.6-anchors-';
- await page.goto(process.env.DASHBOARD_URL||'http://127.0.0.1:8765');
+ const dashboard=process.env.DASHBOARD_URL||'http://127.0.0.1:8765';
+ let ready=false;
+ for(let attempt=0;attempt<36;attempt++){
+  const q=new URLSearchParams({run:base+'10',sequence:'camel',view:'dashboard_exports/mesh.json'});
+  const response=await fetch(dashboard+'/api/frames?'+q);const data=await response.json();
+  if(response.ok&&data.manifest?.selected_frames_completed&&data.frames.filter(f=>f.render_available).length===3){ready=true;break}
+  await new Promise(resolve=>setTimeout(resolve,5000));
+ }
+ assert.equal(ready,true,'Three selected frames must be complete and settled before browser inspection');
+ await page.goto(dashboard);
  await page.waitForFunction(()=>document.querySelector('#sequence').options.length===4);
  await page.selectOption('#sequence','camel');await page.selectOption('#experiment','2.6');
  await page.waitForFunction(()=>[...document.querySelector('#run').options].some(o=>o.value.includes('camel-bends-20261009')));
  await page.selectOption('#run',base+'0');
  await page.waitForFunction(()=>document.querySelector('#selectionSummary').textContent.includes('draft anchors'));
+ await page.waitForFunction(()=>[...document.querySelectorAll('#cards small')].every(x=>x.textContent.includes('3/90')));
  await page.check('#compare');await page.selectOption('#experimentB','2.6');await page.selectOption('#runB',base+'10');
  await page.waitForFunction(()=>[...document.querySelectorAll('#cards small')].every(x=>x.textContent.includes('3/90')));
  assert.equal(await page.locator('#charts svg').count(),5);
+ assert.equal(await page.locator('#charts svg circle').count(),30,'Sparse frame measurements must remain visible without joining gaps');
  await page.locator('#scrubber').evaluate(el=>{el.value=20;el.dispatchEvent(new Event('input'))});
  await page.waitForFunction(()=>document.querySelector('#frameLabel').textContent.includes('00020')&&!document.querySelector('#render').hidden&&!document.querySelector('#renderB').hidden);
  const matched=await page.evaluate(async()=>{

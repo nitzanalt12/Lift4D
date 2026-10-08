@@ -116,7 +116,7 @@ async function loadFrames(){
   $('scrubber').max=Math.max(0,frames.length-1);$('scrubber').value=Math.max(0,Math.min(Number($('scrubber').value),frames.length-1));
   $('details').textContent=JSON.stringify({run:detail,runB:detailB,view:data.view,export:data.manifest,comparison:comparisonProof,comparisonError},null,2);
   await showFrame();
-  if(gen===generation&&(comparing()||data.manifest?.complete&&data.view?.kind==='manifest'))$('evaluate').click();
+  if(gen===generation&&(comparing()||data.view?.kind==='manifest'&&frames.some(f=>f.render_available&&f.aligned)))$('evaluate').click();
  }catch(e){if(gen===generation){frames=[];$('status').textContent=e.message}}
 }
 async function showFrame(){
@@ -149,7 +149,7 @@ function drawCharts(){
   if(!good.length){const p=document.createElement('p');p.textContent='לא זמין · No finite verified measurements';d.append(p)}else{
    const lo=Math.min(...good),hi=Math.max(...good),n=Math.max(1,frames.length-1);const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 600 130');
    const x=i=>20+i/n*560,y=v=>110-(v-lo)/(hi-lo||1)*90;
-   for(const s of series){let points=[];function segment(){if(!points.length)return;const line=document.createElementNS(svg.namespaceURI,'polyline');line.setAttribute('points',points.join(' '));line.setAttribute('fill','none');line.setAttribute('stroke',s.color);line.setAttribute('stroke-width','2');svg.append(line);points=[]}s.values.forEach((v,i)=>{if(typeof v!=='number'||!Number.isFinite(v))segment();else points.push(`${x(i)},${y(v)}`)});segment()}
+   for(const s of series){let points=[];function segment(){if(!points.length)return;const line=document.createElementNS(svg.namespaceURI,'polyline');line.setAttribute('points',points.join(' '));line.setAttribute('fill','none');line.setAttribute('stroke',s.color);line.setAttribute('stroke-width','2');svg.append(line);points=[]}s.values.forEach((v,i)=>{if(typeof v!=='number'||!Number.isFinite(v))segment();else{points.push(`${x(i)},${y(v)}`);const dot=document.createElementNS(svg.namespaceURI,'circle');for(const [k,value] of Object.entries({cx:x(i),cy:y(v),r:3,fill:s.color}))dot.setAttribute(k,value);const title=document.createElementNS(svg.namespaceURI,'title');title.textContent=frames[i].id+' · '+fmt(v);dot.append(title);svg.append(dot)}});segment()}
    const cursor=document.createElementNS(svg.namespaceURI,'line');const cx=x(displayedIndex);for(const [k,v] of Object.entries({x1:cx,x2:cx,y1:10,y2:115,stroke:'#ffcc80'}))cursor.setAttribute(k,v);svg.append(cursor);
    svg.onclick=e=>{const r=svg.getBoundingClientRect();$('scrubber').value=Math.round(Math.max(0,Math.min(1,((e.clientX-r.left)/r.width*600-20)/560))*n);showFrame()};d.append(svg);
    const p=document.createElement('p');p.textContent=`Range ${fmt(lo)}–${fmt(hi)} · explicit input frame IDs · click to seek`;d.append(p);

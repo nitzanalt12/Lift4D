@@ -114,6 +114,12 @@ Prepare job 102393: `runs/video_anchors/camel-20261009`. Initial unit-prior job
 Weak-leg-prior job 102395:
 `runs/sam3d_mesh_video_anchors/camel-soft-leg-prior-20261009`.
 Each contains separate `camel-2.6-anchors-0` / `camel-2.6-anchors-10` outputs.
+Six-handle surface-bend job 102396 completed:
+`runs/sam3d_mesh_video_anchors/camel-bends-20261009`. It uses the weak leg prior
+and 17 visible draft observations on the same three frames. Checkpoint states
+remain bitwise unchanged. Its weight-0 geometry matches the earlier weak-prior
+control within 2.1e-7 object units, confirming that adding unused handles did
+not change that control.
 
 To add explicitly annotated surface bends without replacing a definition:
 
@@ -140,6 +146,35 @@ reprojection error is explicitly a **fit metric on supplied observations**, not
 held-out validation. Very small fit residuals do not establish true image or
 3D accuracy, especially with approximate draft labels.
 
+Partial manifests with settled, verified renders now load cached metrics
+automatically. Sparse graph measurements appear as individual points; missing
+frame intervals remain gaps rather than interpolated curves.
+
+## Observed pilot results
+
+All values below use exactly input frames 00000 / 00020 / 00030, DAVIS object
+255, original input cameras/resolutions and render-alpha threshold 0.5. Boundary
+p95 is the **mean of each frame's pooled bidirectional p95**, not a pooled
+sequence percentile. Cached source settings and native per-frame rows are in
+`runs/video_anchors/camel-bends-20261009/evaluation.json` and `assessment.json`.
+
+| Protocol | Mask IoU | Boundary mean px | Boundary p95 px | Object PSNR dB | Object LPIPS |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Original raw 2.1, same three frames | 0.7515 | 7.224 | 22.641 | 10.686 | 0.4842 |
+| Weak-leg-prior ARAP, video weight 0 | 0.7064 | 8.608 | 25.145 | 9.456 | 0.4719 |
+| Weak-leg-prior ARAP + four sole handles | 0.7057 | 7.705 | 19.553 | 9.540 | 0.4727 |
+| Weak-leg-prior ARAP + soles and two surface bends | 0.7089 | 7.650 | 19.430 | 9.563 | 0.4726 |
+
+Visible fitted-target mean residuals for the six-handle result are 0.0016 /
+0.0020 / 0.0040 px. These tiny errors reflect fitting approximate supplied
+coordinates; they are **not landmark accuracy**. All three frames hit the
+150-iteration cap without the convergence criterion being met. Canonical edge
+stretch p95 is 1.156 / 1.273 / 1.248. There are still visible leg/articulation
+artifacts. Video anchors improve boundary errors against their matched control,
+but the overall Mask IoU remains below raw 2.1. This is an implemented diagnostic
+pilot, **not a solved limb-motion problem or a complete animation**. No conclusion
+about unobserved depth, hidden joints or temporal motion is established.
+
 Outputs preserve definition / annotation versions and hashes, commit, solver
 and driver hashes, checkpoints, camera provenance, native RGB/alpha, original
 canonical arrays and per-frame logs / distortion / convergence flags. Actual
@@ -157,3 +192,7 @@ real draft labels, native-pixel clicks under display scaling, explicit identity
 confirmation, hidden points, frame switching and save payloads. Accepted browser
 test saves are intercepted, so they do not create labels in real runs. The GPU
 driver checks camera/render reproduction and rejects source provenance changes.
+`dashboard/tests/video_results_browser.cjs` checks real six-handle pilots:
+automatic single-run partial metrics, draft labels, matched 3/90 coverage,
+visible isolated graph points, exact decoded frame-20 images in both panels,
+missing frame-10 renders and navigation only to measured problematic frames.
