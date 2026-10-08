@@ -21,4 +21,19 @@ RUN_DIR="$(realpath "$1")"
 test -f "$RUN_DIR/run.sh"
 # Save scheduler allocation with the run, rather than only in a global log.
 scontrol show job "$SLURM_JOB_ID" > "$RUN_DIR/slurm-job.txt"
+python - "$RUN_DIR/gpu-allocation.json" <<'PY'
+import json
+import os
+from pathlib import Path
+import sys
+import torch
+
+count = torch.cuda.device_count()
+report = {'job_id': os.environ.get('SLURM_JOB_ID'),
+          'cuda_visible_devices': os.environ.get('CUDA_VISIBLE_DEVICES'),
+          'devices': [torch.cuda.get_device_name(i) for i in range(count)]}
+Path(sys.argv[1]).write_text(json.dumps(report, indent=2) + '\n')
+if count != 1:
+    raise SystemExit('Expected one visible CUDA GPU; refusing to start the baseline')
+PY
 bash "$RUN_DIR/run.sh"
