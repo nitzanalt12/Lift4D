@@ -232,7 +232,9 @@ def main():
     state0={k:v.detach().cpu().clone() for k,v in model.state_dict().items()}
     state_digest=hashlib.sha256(b''.join(k.encode()+v.contiguous().numpy().tobytes() for k,v in sorted(state0.items()))).hexdigest()
     settings['network_initial_state_sha256']=state_digest
-    atomic_json(out/'config.json',settings);atomic_json(out/'inventory.json',{sequence:prepared['inventory'][sequence]})
+    # The preparation manifest carries this sequence's inventory directly;
+    # the native/dashboard inventory file expects it keyed by sequence.
+    atomic_json(out/'config.json',settings);atomic_json(out/'inventory.json',{sequence:prepared['inventory']})
     atomic_json(out/'metadata.json',metadata)
     rng=np.random.default_rng(args.seed);frame_order=[];start=time.monotonic()
     def save_checkpoint(step):
