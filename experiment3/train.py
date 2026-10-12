@@ -59,13 +59,14 @@ def main():
     parser.add_argument('--prepared',default='auto');parser.add_argument('--runs-root',default='runs')
     parser.add_argument('--sequence',default='camel');parser.add_argument('--output',required=True)
     parser.add_argument('--steps',type=int,default=20000);parser.add_argument('--lr',type=float,default=1.6e-4)
+    parser.add_argument('--lr-final',type=float,default=1.6e-6);parser.add_argument('--lr-schedule-steps',type=int,default=40000)
     parser.add_argument('--checkpoint-every',type=int,default=1000);parser.add_argument('--export-every',type=int,default=5000)
     parser.add_argument('--seed',type=int,default=31);parser.add_argument('--smoke-check',action='store_true')
     parser.add_argument('--lambda-mask',type=float,default=1.0);parser.add_argument('--lambda-track',type=float,default=1.0)
     parser.add_argument('--lambda-edge',type=float,default=1.0);parser.add_argument('--lambda-temporal',type=float,default=.01)
     parser.add_argument('--lambda-geodesic',type=float,default=1.0);parser.add_argument('--lambda-displacement',type=float,default=.001)
     args=parser.parse_args()
-    if args.steps<1 or args.lr<=0 or args.checkpoint_every<1 or args.export_every<1:raise ValueError('Positive training settings required')
+    if args.steps<1 or args.lr<=0 or args.lr_final<=0 or args.lr_schedule_steps<1 or args.checkpoint_every<1 or args.export_every<1:raise ValueError('Positive training settings required')
     for name in ['lambda_mask','lambda_track','lambda_edge','lambda_temporal','lambda_geodesic','lambda_displacement']:
         if getattr(args,name)<0:raise ValueError('Loss weights must be nonnegative')
     prepared_path=locate_prepared(args.runs_root,args.sequence) if args.prepared=='auto' else Path(args.prepared).resolve()
@@ -130,10 +131,12 @@ def main():
         frame_cameras.append(camera)
         inputs[frame['id']]={'rgb':frame['image_sha256'],'mask':frame['mask_sha256']}
     optimizer=torch.optim.Adam([p for p in model.parameters() if p.requires_grad],lr=args.lr,eps=1e-15)
-    lr_final=args.lr*.01;delay=.01;steps=1 if args.smoke_check else args.steps
+    lr_final=args.lr_final;steps=1 if args.smoke_check else args.steps
     def update_lr(step):
-        ratio=min(1.,max(0.,step/max(1,steps)))
-        lr=lr_final+(args.lr-lr_final)*np.exp(np.log(delay)*(1-ratio))
+        # Match DeformNetwork's native get_expon_lr_func: log-linear decay,
+        # 40k schedule horizon, and no delay because lr_delay_steps defaults 0.
+        ratio=min(1.,max(0.,step/args.lr_schedule_steps))
+        lr=np.exp(np.log(args.lr)*(1-ratio)+np.log(lr_final)*ratio)
         for group in optimizer.param_groups:group['lr']=float(lr)
         return float(lr)
     def node_delta(t):
@@ -209,7 +212,8 @@ def main():
         'frozen_outputs':['Gaussian rotation head','Gaussian scale head','opacity/color heads absent'],
         'node_count':int(len(node_vertices)),'control_k':3,'control_policy':prepared['control_policy'],
         'neighbor_policy':prepared['neighbor_policy'],'geodesic_gate':{'stretch':prepared['maximum_neighbor_stretch'],'depth_assumption':prepared['neighbor_depth_assumption']},
-        'iterations':steps,'requested_iterations':args.steps,'learning_rate':args.lr,'lr_final':lr_final,'lr_delay_multiplier':delay,
+        'iterations':steps,'requested_iterations':args.steps,'learning_rate':args.lr,'lr_final':lr_final,
+        'lr_schedule_steps':args.lr_schedule_steps,'lr_schedule':'original DeformNetwork log-linear decay; lr_delay_steps=0',
         'optimizer':'Adam eps=1e-15 over freshly initialized LIFT4D MLP position trunk/head only',
         'losses':{'mask':'1 minus soft IoU of differentiable nvdiffrast alpha and DAVIS label 255',
             'track':'Smooth-L1 of cycle-checked, DAVIS-contained, geodesic-gated fixed material vertices, normalized by image diagonal (3px beta)',
@@ -220,7 +224,7 @@ def main():
             'depth':'camera-space z barrier for observed track points'},
         'weights':{'mask':args.lambda_mask,'track':args.lambda_track,'edge':args.lambda_edge,'temporal':args.lambda_temporal,
             'geodesic':args.lambda_geodesic,'displacement':args.lambda_displacement,'depth':100.},
-        'training_sampling':'uniform random permutation of all input frames, repeated without interpolation of hidden tracks',
+        'training_sampling':'uniform random permutation of input frames 1..N-1; frame 0 is the fixed canonical reference pose',
         'frame_count':nframes,'track_query_count':len(track_vertices),'valid_track_observations':int(valid.sum()),
         'valid_tracks_per_frame':valid.sum(axis=1).tolist(),'target_object_id':255,'alpha_threshold':.5,
         'target_mask_source':prepared['frames'][0]['mask_path'],'camera_policy':'exact prepared frozen original input camera affine; no camera fitting',

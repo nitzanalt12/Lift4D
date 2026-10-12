@@ -30,7 +30,8 @@ trained deformation, fine-tuned deltas or ARAP projections.
    training, not optimization of old per-frame delta translations.
 5. Train the freshly initialized LIFT4D position MLP for 20,000 steps, matching
    the baseline geometry-stage count for a 90-frame sequence. One frame is
-   sampled uniformly at each step. The tracked material vertices, camera, and
+   sampled uniformly from frames 1..N-1 at each step (frame 0 is the fixed
+   canonical pose and has no trainable deformation graph). The tracked material vertices, camera, and
    mesh are fixed; the network predicts control-node displacement, and the
    fixed K=3 geodesic weights interpolate it to every mesh vertex. Subtracting
    the frame-0 network prediction fixes that pose exactly. Rotation and scale
@@ -44,6 +45,10 @@ trained deformation, fine-tuned deltas or ARAP projections.
    triangular surfaces. Canonical shortest edge paths between geodesic neighbors
    are fixed; their deformed lengths are differentiable material-path measures,
    **not silently recomputed exact surface geodesics on the deformed mesh**.
+   Use the original `DeformNetwork` position schedule: log-linear decay from
+   `1.6e-4` to `1.6e-6` over its native 40,000-step horizon. A 20,000-step
+   mesh run therefore ends at the midpoint of that schedule, as the native
+   model would; the optimizer starts at `1.6e-4`.
 6. Run a separate one-step CUDA smoke job, including a real nonzero position
    head gradient and changed MLP weights. Only then run full training on SLURM,
    with END/FAIL mail enabled. Save atomically at 1,000-step intervals and
@@ -57,35 +62,42 @@ expose the known failure. The common implementation then runs the same protocol
 on rhino, camel, flamingo and cows. No experiment-2 source is modified. Data,
 tracks, checkpoints and renders stay under ignored `runs/` directories.
 
-The camel preparation is SLURM job 104574. Its current scheduled start estimate
-is **2026-10-14 16:09 Asia/Jerusalem** (the job requests an A6000 on
-`part-preempt-classB`); the trainer resolves the single settled camel
-`prepared.json` automatically, so the preparation output path does not need to
-be guessed when submitting its dependent jobs. The GPU remains unavailable from
-the login node, and SSH host alias `rhino` does not resolve from this session.
-
-Once tracking preparation finishes, submit the isolated smoke, then the full
-training as a dependent job:
+The fixed camel tracks are already prepared at
+`runs/experiment3/sam3d-geodesic/camel-20261012/prepared.json` (SLURM job
+104582): 90 frames, 256 canonical queries, and 3,186 retained observations.
+The preparation uses the existing SAM3D 2.1 camel mesh, the frozen baseline
+appearance cameras and the local CoTracker3 checkpoint. SSH alias `rhino` did
+not resolve, so the work uses SLURM's A100 allocation. To run a fresh smoke and
+training chain:
 
 ```bash
-sbatch --dependency=afterok:104574 --output=runs/experiment3-smoke-%j.log \
+sbatch --dependency=afterok:104582 --partition=part-preempt --gres=gpu:A100:1 \
+  --output=runs/experiment3-smoke-%j.log \
   scripts/slurm/mesh-train-geodesic.sh train \
   --prepared auto --sequence camel \
-  --output runs/sam3d_mesh_geodesic/camel-smoke-20261012 \
-  --smoke-check --steps 1
+  --output runs/sam3d_mesh_geodesic/camel-smoke-lrschedule-20261012 \
+  --smoke-check --steps 1 --lr 1.6e-4 --lr-final 1.6e-6 --lr-schedule-steps 40000
 
 # Submit the full job only after the smoke exits successfully.
-sbatch --dependency=afterok:SMOKE_JOB_ID --output=runs/experiment3-train-%j.log \
+sbatch --dependency=afterok:SMOKE_JOB_ID --partition=part-preempt --gres=gpu:A100:1 \
+  --time=06:00:00 --output=runs/experiment3-train-%j.log \
   scripts/slurm/mesh-train-geodesic.sh train \
   --prepared auto --sequence camel \
-  --output runs/sam3d_mesh_geodesic/camel-geodesic-20261012 \
-  --steps 20000 --checkpoint-every 1000 --export-every 5000
+  --output runs/sam3d_mesh_geodesic/camel-geodesic-lrschedule-20261012 \
+  --steps 20000 --checkpoint-every 1000 --export-every 5000 \
+  --lr 1.6e-4 --lr-final 1.6e-6 --lr-schedule-steps 40000
 ```
 
 The second command intentionally depends on the successful smoke job. The
 trainer stores each model checkpoint separately from each all-frame dashboard
 export. Dashboard experiment 3 selections show only real saved renders and
 their actual MLP step counts.
+
+The first full run (`camel-geodesic-referencefix-20261012`) was intentionally
+stopped at step 1,000 after audit found a learning-rate schedule mismatch. Its
+partial checkpoint and logs are retained for provenance, but it is not a final
+experiment result. The current implementation uses the native LIFT4D schedule;
+new runs must use a fresh output directory and pass a successful GPU smoke first.
 
 ## Limits to record
 
