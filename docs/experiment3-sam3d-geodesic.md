@@ -93,11 +93,12 @@ trainer stores each model checkpoint separately from each all-frame dashboard
 export. Dashboard experiment 3 selections show only real saved renders and
 their actual MLP step counts.
 
-The first full run (`camel-geodesic-referencefix-20261012`) was intentionally
-stopped at step 1,000 after audit found a learning-rate schedule mismatch. Its
-partial checkpoint and logs are retained for provenance, but it is not a final
-experiment result. The current implementation uses the native LIFT4D schedule;
-new runs must use a fresh output directory and pass a successful GPU smoke first.
+Two interrupted attempts are retained and labeled in the dashboard: the first
+hit the fixed frame-0 pose, which has no trainable graph; the second
+(`camel-geodesic-referencefix-20261012`) was stopped at step 3,000 after an
+audit found a rising learning-rate schedule. Neither is a final result. The
+complete run is `camel-geodesic-lrschedule-local-20261012`, trained for 20,000
+steps with the native schedule and exported at 5k-step intervals.
 
 ## Limits to record
 
