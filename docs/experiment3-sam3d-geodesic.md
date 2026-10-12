@@ -28,17 +28,26 @@ trained deformation, fine-tuned deltas or ARAP projections.
    mesh geometry and remain inactive. Subtract the frame-0 prediction so that
    the canonical pose is fixed exactly. This is full fresh geometry-field
    training, not optimization of old per-frame delta translations.
-5. Train on all frames with valid visible-track reprojection, DAVIS silhouette,
-   ARAP, temporal acceleration and neighborhood **material path length** losses.
-   Canonical shortest edge paths between geodesic neighbors are fixed; sums of
-   their deformed edge lengths are differentiable. These are lengths of the
-   transported canonical paths, **not silently recomputed exact surface
-   geodesics on the deformed mesh**. Record losses, weights and units explicitly.
-6. Verify synthetic limb ambiguity, disconnected components, invisible tracks,
-   projection gradients and rigid-motion invariance. Run a separate CUDA smoke
-   job, including real nonzero position gradients and changed MLP weights. Only
-   then submit full training on SLURM, with END/FAIL mail enabled. Export native
-   input-view RGB/alpha/vertices and expose actual checkpoints in the dashboard.
+5. Train the freshly initialized LIFT4D position MLP for 20,000 steps, matching
+   the baseline geometry-stage count for a 90-frame sequence. One frame is
+   sampled uniformly at each step. The tracked material vertices, camera, and
+   mesh are fixed; the network predicts control-node displacement, and the
+   fixed K=3 geodesic weights interpolate it to every mesh vertex. Subtracting
+   the frame-0 network prediction fixes that pose exactly. Rotation and scale
+   heads stay inactive. Losses are soft silhouette IoU, robust track reprojection
+   normalized by image diagonal, canonical triangle-edge length strain,
+   second-difference temporal acceleration, geodesic material path stretch,
+   displacement magnitude and an observed-track camera-depth barrier. Initial
+   weights are mask=1, track=1, edge=1, temporal=.01, geodesic=1,
+   displacement=.001, depth=100. These are explicit mesh-study choices, not a
+   claim that the original Gaussian geometry objective directly applies to
+   triangular surfaces. Canonical shortest edge paths between geodesic neighbors
+   are fixed; their deformed lengths are differentiable material-path measures,
+   **not silently recomputed exact surface geodesics on the deformed mesh**.
+6. Run a separate one-step CUDA smoke job, including a real nonzero position
+   head gradient and changed MLP weights. Only then run full training on SLURM,
+   with END/FAIL mail enabled. Save atomically at 1,000-step intervals and
+   export aligned all-frame RGB/alpha/vertices every 5,000 steps.
 7. Verify full training completion, checkpoint provenance, finite trajectories,
    exact fixed canonical pose, saved rendering coverage and cached mask/boundary
    evaluation. Do not call a successful job proof that limb identity is solved.
@@ -47,6 +56,36 @@ The first validation sequence is camel because existing limb diagnostics can
 expose the known failure. The common implementation then runs the same protocol
 on rhino, camel, flamingo and cows. No experiment-2 source is modified. Data,
 tracks, checkpoints and renders stay under ignored `runs/` directories.
+
+The camel preparation is SLURM job 104574. Its current scheduled start estimate
+is **2026-10-14 16:09 Asia/Jerusalem** (the job requests an A6000 on
+`part-preempt-classB`); the trainer resolves the single settled camel
+`prepared.json` automatically, so the preparation output path does not need to
+be guessed when submitting its dependent jobs. The GPU remains unavailable from
+the login node, and SSH host alias `rhino` does not resolve from this session.
+
+Once tracking preparation finishes, submit the isolated smoke, then the full
+training as a dependent job:
+
+```bash
+sbatch --dependency=afterok:104574 --output=runs/experiment3-smoke-%j.log \
+  scripts/slurm/mesh-train-geodesic.sh train \
+  --prepared auto --sequence camel \
+  --output runs/sam3d_mesh_geodesic/camel-smoke-20261012 \
+  --smoke-check --steps 1
+
+# Submit the full job only after the smoke exits successfully.
+sbatch --dependency=afterok:SMOKE_JOB_ID --output=runs/experiment3-train-%j.log \
+  scripts/slurm/mesh-train-geodesic.sh train \
+  --prepared auto --sequence camel \
+  --output runs/sam3d_mesh_geodesic/camel-geodesic-20261012 \
+  --steps 20000 --checkpoint-every 1000 --export-every 5000
+```
+
+The second command intentionally depends on the successful smoke job. The
+trainer stores each model checkpoint separately from each all-frame dashboard
+export. Dashboard experiment 3 selections show only real saved renders and
+their actual MLP step counts.
 
 ## Limits to record
 

@@ -2,9 +2,9 @@
 from . import artifacts as a
 
 ANIMALS={'rhino':'קרנף · Rhino','camel':'גמל · Camel','flamingo':'פלמינגו · Flamingo','cows':'פרה · Cows'}
-EXPERIMENTS={'baseline':'1 · LIFT4D baseline','2.1':'2.1 · Frozen mesh · final deformation','2.2':'2.2 · Frozen mesh · geometry deformation','2.3':'2.3 · Mesh fine-tuning','2.4':'2.4 · Mesh ARAP projection','2.5':'2.5 · Surface-aware frozen mesh','2.6':'2.6 · Video anchors + ARAP pilot','demo':'DEMO · Synthetic data'}
-STAGES={'node':'geometry','node_delta':'appearance','geometry':'geometry','appearance':'appearance','mesh_finetune':'mesh_finetune'}
-STAGE_LABELS={'geometry':'Geometry','appearance':'Appearance','mesh_finetune':'Fine-tuning','arap':'ARAP · source','surface_transfer':'Surface weights · source','video_anchors':'Video anchors · source'}
+EXPERIMENTS={'baseline':'1 · LIFT4D baseline','2.1':'2.1 · Frozen mesh · final deformation','2.2':'2.2 · Frozen mesh · geometry deformation','2.3':'2.3 · Mesh fine-tuning','2.4':'2.4 · Mesh ARAP projection','2.5':'2.5 · Surface-aware frozen mesh','2.6':'2.6 · Video anchors + ARAP pilot','3':'3 · Fresh SAM3D mesh deformation','demo':'DEMO · Synthetic data'}
+STAGES={'node':'geometry','node_delta':'appearance','geometry':'geometry','appearance':'appearance','mesh_finetune':'mesh_finetune','mesh_deformation':'mesh_deformation'}
+STAGE_LABELS={'geometry':'Geometry','appearance':'Appearance','mesh_finetune':'Fine-tuning','mesh_deformation':'Mesh deformation','arap':'ARAP · source','surface_transfer':'Surface weights · source','video_anchors':'Video anchors · source'}
 
 
 def build(root, include_auxiliary=False):
