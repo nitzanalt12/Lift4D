@@ -274,7 +274,10 @@ def main():
     previous=[]
     with (out/'logs/losses.jsonl').open('w') as log:
         for step in steps_to_run:
-            if not frame_order:frame_order=rng.permutation(nframes).tolist()
+            # Frame zero is the fixed canonical reference pose by definition;
+            # its vertices have no trainable deformation graph. Sample only
+            # supervised non-reference frames to keep every step differentiable.
+            if not frame_order:frame_order=rng.permutation(np.arange(1,nframes)).tolist()
             index=frame_order.pop();optimizer.zero_grad(set_to_none=True);lr=update_lr(step-1)
             q=deform(index);total,values,_=losses(index,q)
             if not torch.isfinite(total) or any(not torch.isfinite(x) for x in values.values()):raise ValueError('Nonfinite mesh deformation loss')
