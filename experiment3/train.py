@@ -243,6 +243,7 @@ def main():
             'seed':args.seed,'torch_rng':torch.get_rng_state(),'cuda_rng':torch.cuda.get_rng_state_all(),
             'numpy_rng':rng.bit_generator.state,'frame_order':frame_order},tmp)
         os.replace(tmp,path)
+        return path
     def export(step):
         directory=out/'renders'/f'{step:06d}'
         for name in ['rgb','alpha','vertices']:(directory/name).mkdir(parents=True,exist_ok=False)
